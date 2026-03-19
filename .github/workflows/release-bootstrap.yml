@@ -1,0 +1,26 @@
+name: Publish Bootstrap Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-bootstrap.yml
+      - docs/RELEASE_v0.1.0-bootstrap.md
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or update bootstrap release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0-bootstrap
+          name: v0.1.0-bootstrap
+          body_path: docs/RELEASE_v0.1.0-bootstrap.md
+          prerelease: true
+          make_latest: false

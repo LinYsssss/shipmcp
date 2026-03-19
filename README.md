@@ -134,6 +134,8 @@ Backup names if you ever rebrand:
 - [CLI UX](docs/CLI_UX.md)
 - [GitHub Metadata](docs/GITHUB_METADATA.md)
 - [Launch Copy](docs/LAUNCH_COPY.md)
+- [Bootstrap Release Notes](docs/RELEASE_v0.1.0-bootstrap.md)
+- [GitHub Setup](docs/GITHUB_SETUP.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 
@@ -173,3 +175,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
