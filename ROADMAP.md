@@ -12,7 +12,7 @@
 
 ## v0.2
 
-- path and operationId filtering
+- response-aware and deprecated-operation selection
 - better schema flattening
 - better oneOf/anyOf/allOf handling
 - HTTP transport template

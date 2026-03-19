@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -37,6 +37,19 @@ test("summarizeSpec reflects active tag and method filters", async () => {
     filterOptions: {
       includeTags: ["pets"],
       excludeMethods: ["POST"]
+    }
+  });
+
+  assert.equal(summary.operationCount, 4);
+  assert.equal(summary.selectedOperationCount, 2);
+});
+
+test("summarizeSpec reflects path and operationId wildcard filters", async () => {
+  const spec = await loadSpec(jsonFixturePath);
+  const summary = summarizeSpec(spec, {
+    filterOptions: {
+      includePaths: ["/pets*"],
+      excludeOperationIds: ["create*"]
     }
   });
 
@@ -86,6 +99,32 @@ test("generateProject respects includeTags and excludeMethods filters", async ()
   assert.doesNotMatch(toolsFile, /get_admin_stats/);
   assert.match(generatedReadme, /include-tags=pets/);
   assert.match(generatedReadme, /exclude-methods=POST/);
+});
+
+test("generateProject respects includePaths and excludeOperationIds filters", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-path-filtered-"));
+
+  const result = await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    filterOptions: {
+      includePaths: ["/pets*"],
+      excludeOperationIds: ["create*"]
+    }
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+  const generatedReadme = await fs.readFile(path.join(targetDir, "README.md"), "utf8");
+
+  assert.equal(result.operationCount, 2);
+  assert.equal(result.totalOperationCount, 4);
+  assert.match(toolsFile, /list_pets/);
+  assert.match(toolsFile, /get_pet/);
+  assert.doesNotMatch(toolsFile, /create_pet/);
+  assert.doesNotMatch(toolsFile, /get_admin_stats/);
+  assert.match(generatedReadme, /include-paths=\/pets\*/);
+  assert.match(generatedReadme, /exclude-operation-ids=create\*/);
 });
 
 test("generateProject supports YAML specs with local refs and json-like request bodies", async () => {

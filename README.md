@@ -64,7 +64,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - generated GitHub Actions CI
 - generated project README
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
-- tag and HTTP method filtering
+- tag, HTTP method, path, and operationId filtering
 
 Explicitly not in v0.1:
 
@@ -100,6 +100,12 @@ Generate only the `pets` tools and skip `POST` endpoints:
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-readonly --include-tags pets --exclude-methods post --yes
 ```
 
+Generate only `/pets*` paths while excluding matching operationIds with wildcards:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-focused --include-paths /pets* --exclude-operation-ids create* --yes
+```
+
 Run the local project checks:
 
 ```bash
@@ -118,6 +124,12 @@ Filtering is the first practical control layer:
 - `--exclude-tags internal`
 - `--include-methods get,post`
 - `--exclude-methods delete`
+- `--include-paths /pets*,/billing/*`
+- `--exclude-paths /admin/*`
+- `--include-operation-ids listPets,getPet`
+- `--exclude-operation-ids create*,delete*`
+
+Path and operationId filters support `*` wildcards.
 
 ## Example output
 
@@ -182,8 +194,8 @@ docs/
 ## Near-term focus
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
-2. Expand filter coverage and operation selection.
-3. Improve schema flattening and composed-schema naming quality.
+2. Improve schema flattening and composed-schema naming quality.
+3. Add response-aware and deprecated-operation selection.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.
 

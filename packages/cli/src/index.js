@@ -145,9 +145,9 @@ function printHelp() {
   console.log("ShipMCP");
   console.log("");
   console.log("Usage:");
-  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
-  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
-  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
+  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
+  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
+  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
   console.log("  shipmcp doctor");
   console.log("  shipmcp dev");
 }
@@ -157,7 +157,11 @@ function buildFilterOptions(flags) {
     includeTags: parseList(flags["include-tags"]),
     excludeTags: parseList(flags["exclude-tags"]),
     includeMethods: parseList(flags["include-methods"]),
-    excludeMethods: parseList(flags["exclude-methods"])
+    excludeMethods: parseList(flags["exclude-methods"]),
+    includePaths: parseList(flags["include-paths"]),
+    excludePaths: parseList(flags["exclude-paths"]),
+    includeOperationIds: parseList(flags["include-operation-ids"]),
+    excludeOperationIds: parseList(flags["exclude-operation-ids"])
   };
 }
 
@@ -193,6 +197,22 @@ function formatFilters(filterOptions) {
 
   if (filterOptions.excludeMethods.length > 0) {
     parts.push(`exclude-methods=${filterOptions.excludeMethods.join(",")}`);
+  }
+
+  if (filterOptions.includePaths.length > 0) {
+    parts.push(`include-paths=${filterOptions.includePaths.join(",")}`);
+  }
+
+  if (filterOptions.excludePaths.length > 0) {
+    parts.push(`exclude-paths=${filterOptions.excludePaths.join(",")}`);
+  }
+
+  if (filterOptions.includeOperationIds.length > 0) {
+    parts.push(`include-operation-ids=${filterOptions.includeOperationIds.join(",")}`);
+  }
+
+  if (filterOptions.excludeOperationIds.length > 0) {
+    parts.push(`exclude-operation-ids=${filterOptions.excludeOperationIds.join(",")}`);
   }
 
   return parts.join(" | ");
