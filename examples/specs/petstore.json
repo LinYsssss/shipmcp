@@ -1,0 +1,107 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Acme Petstore API",
+    "version": "1.0.0",
+    "description": "A compact example spec for ShipMCP bootstrap testing."
+  },
+  "servers": [
+    {
+      "url": "https://api.acmepets.example"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "summary": "List pets",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of pets to return.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paged array of pets."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPet",
+        "summary": "Create a new pet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pet created."
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "get": {
+        "operationId": "getPet",
+        "summary": "Get a pet by ID",
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "description": "Unique pet identifier.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeVisits",
+            "in": "query",
+            "description": "Include visit history in the response.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A single pet."
+          }
+        }
+      }
+    }
+  }
+}

@@ -11,8 +11,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "node --test",
-    "test": "node --test",
+    "check": "node --test --test-isolation=none packages/generator/test/generator.test.js",
+    "test": "node --test --test-isolation=none packages/generator/test/generator.test.js",
     "validate:petstore": "node packages/cli/src/index.js validate examples/specs/petstore.json",
     "generate:petstore": "node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-mcp --yes"
   }

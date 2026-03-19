@@ -30,10 +30,12 @@ ShipMCP is being built as a contributor-friendly infrastructure project. The bes
 ## Local checks
 
 ```bash
-node --test
+node --test --test-isolation=none packages/generator/test/generator.test.js
 node packages/cli/src/index.js validate examples/specs/petstore.json
 ```
 
 ## Design rule
 
 Do not add broad flexibility if it makes output less predictable. ShipMCP should prefer strong defaults over weak abstractions.
+
+

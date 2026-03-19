@@ -1,0 +1,670 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"];
+
+export async function loadSpec(specRef) {
+  const raw = await readSpecSource(specRef);
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    if (/\.ya?ml(?:$|\?)/i.test(specRef)) {
+      throw new Error(
+        "This bootstrap currently supports JSON OpenAPI files only. YAML parsing is next on the roadmap."
+      );
+    }
+
+    throw new Error(`Failed to parse OpenAPI document as JSON: ${error.message}`);
+  }
+}
+
+export function validateSpec(spec) {
+  const errors = [];
+  const warnings = [];
+
+  if (!spec || typeof spec !== "object") {
+    errors.push("Spec must be a JSON object.");
+    return { ok: false, errors, warnings };
+  }
+
+  if (!spec.openapi || typeof spec.openapi !== "string" || !spec.openapi.startsWith("3.")) {
+    errors.push("Only OpenAPI 3.x documents are supported.");
+  }
+
+  if (!spec.paths || typeof spec.paths !== "object" || Object.keys(spec.paths).length === 0) {
+    errors.push("Spec must contain at least one path.");
+  }
+
+  if (!spec.info?.title) {
+    warnings.push("Missing info.title. ShipMCP will fall back to a generic project name.");
+  }
+
+  const operations = collectOperations(spec);
+  if (operations.length === 0) {
+    errors.push("Spec does not contain any HTTP operations ShipMCP can generate.");
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+export function summarizeSpec(spec) {
+  return {
+    title: spec.info?.title ?? "Generated MCP API",
+    version: spec.info?.version ?? "0.1.0",
+    pathCount: Object.keys(spec.paths ?? {}).length,
+    operationCount: collectOperations(spec).length
+  };
+}
+
+export function detectAuthPreset(spec, requested = "auto") {
+  if (requested && requested !== "auto") {
+    return requested;
+  }
+
+  const schemes = Object.values(spec.components?.securitySchemes ?? {});
+  const hasApiKey = schemes.some((scheme) => scheme?.type === "apiKey");
+  const hasBearer = schemes.some(
+    (scheme) => scheme?.type === "http" && String(scheme.scheme).toLowerCase() === "bearer"
+  );
+
+  if (hasBearer) {
+    return "bearer";
+  }
+
+  if (hasApiKey) {
+    return "apikey";
+  }
+
+  return "none";
+}
+
+export async function generateProject(options) {
+  const spec = await loadSpec(options.specRef);
+  const validation = validateSpec(spec);
+
+  if (!validation.ok) {
+    throw new Error(`Spec validation failed:\n- ${validation.errors.join("\n- ")}`);
+  }
+
+  const summary = summarizeSpec(spec);
+  const authPreset = detectAuthPreset(spec, options.authPreset);
+  const projectName = options.projectName ?? slug(summary.title);
+  const outDir = options.outDir ?? path.resolve(process.cwd(), projectName);
+  const operations = normalizeOperations(collectOperations(spec));
+  const serverUrl = resolveServerUrl(spec);
+  const files = renderProjectFiles({
+    projectName,
+    title: summary.title,
+    specVersion: summary.version,
+    spec,
+    operations,
+    authPreset,
+    serverUrl
+  });
+
+  await fs.mkdir(outDir, { recursive: true });
+  await writeFiles(outDir, files);
+
+  return {
+    outDir,
+    projectName,
+    authPreset,
+    operationCount: operations.length
+  };
+}
+
+function collectOperations(spec) {
+  const operations = [];
+
+  for (const [routePath, routeConfig] of Object.entries(spec.paths ?? {})) {
+    const pathParameters = Array.isArray(routeConfig?.parameters) ? routeConfig.parameters : [];
+
+    for (const method of HTTP_METHODS) {
+      const operation = routeConfig?.[method];
+      if (!operation || typeof operation !== "object") {
+        continue;
+      }
+
+      const parameters = mergeParameters(pathParameters, operation.parameters ?? []);
+
+      operations.push({
+        method: method.toUpperCase(),
+        path: routePath,
+        operationId: operation.operationId ?? null,
+        summary: operation.summary ?? operation.description ?? `${method.toUpperCase()} ${routePath}`,
+        description: operation.description ?? "",
+        parameters: parameters.map(toInputParameter),
+        requestBody: toRequestBodyInput(operation.requestBody)
+      });
+    }
+  }
+
+  return operations;
+}
+
+function normalizeOperations(operations) {
+  const seenNames = new Map();
+
+  return operations.map((operation) => {
+    const baseName = operation.operationId
+      ? slug(operation.operationId).replace(/-/g, "_")
+      : buildPathToolName(operation.method, operation.path);
+
+    const count = seenNames.get(baseName) ?? 0;
+    seenNames.set(baseName, count + 1);
+
+    const finalName = count === 0 ? baseName : `${baseName}_${count + 1}`;
+
+    return {
+      ...operation,
+      toolName: finalName
+    };
+  });
+}
+
+function mergeParameters(pathParameters, operationParameters) {
+  const byKey = new Map();
+
+  for (const parameter of [...pathParameters, ...operationParameters]) {
+    if (!parameter || typeof parameter !== "object" || parameter.$ref) {
+      continue;
+    }
+
+    byKey.set(`${parameter.in}:${parameter.name}`, parameter);
+  }
+
+  return [...byKey.values()];
+}
+
+function toInputParameter(parameter) {
+  const type = readSchemaType(parameter.schema);
+
+  return {
+    originalName: parameter.name,
+    source: parameter.in ?? "query",
+    name: toSafeIdentifier(parameter.name),
+    required: Boolean(parameter.required),
+    description: parameter.description ?? `${parameter.in ?? "query"} parameter ${parameter.name}`,
+    schemaType: type
+  };
+}
+
+function toRequestBodyInput(requestBody) {
+  if (!requestBody || typeof requestBody !== "object" || requestBody.$ref) {
+    return null;
+  }
+
+  const jsonContent = requestBody.content?.["application/json"];
+  if (!jsonContent) {
+    return null;
+  }
+
+  return {
+    name: "body",
+    required: Boolean(requestBody.required),
+    description: "JSON request body",
+    schemaType: readSchemaType(jsonContent.schema)
+  };
+}
+
+function readSchemaType(schema) {
+  if (!schema || typeof schema !== "object") {
+    return "string";
+  }
+
+  if (schema.type) {
+    return schema.type;
+  }
+
+  if (schema.properties) {
+    return "object";
+  }
+
+  if (schema.items) {
+    return "array";
+  }
+
+  return "string";
+}
+
+function resolveServerUrl(spec) {
+  return spec.servers?.[0]?.url ?? "https://api.example.com";
+}
+
+function renderProjectFiles(context) {
+  const envFile = renderEnvExample(context.authPreset, context.serverUrl);
+  const packageJson = renderGeneratedPackageJson(context.projectName);
+
+  return {
+    ".gitignore": "node_modules/\ndist/\n.env\n",
+    ".env.example": envFile,
+    "package.json": JSON.stringify(packageJson, null, 2),
+    "tsconfig.json": renderTsconfig(),
+    "Dockerfile": renderDockerfile(),
+    "README.md": renderGeneratedReadme(context),
+    ".github/workflows/ci.yml": renderGeneratedCi(),
+    "src/server.ts": renderServerTs(context),
+    "src/client.ts": renderClientTs(context.authPreset, context.serverUrl),
+    "src/tools.ts": renderToolsTs(context.operations),
+    "tests/smoke.test.ts": renderSmokeTest(context.projectName),
+    "tests/api.test.ts": renderApiTest(),
+    "openapi/source.json": JSON.stringify(context.spec, null, 2)
+  };
+}
+
+function renderGeneratedPackageJson(projectName) {
+  return {
+    name: projectName,
+    version: "0.1.0",
+    private: true,
+    type: "module",
+    scripts: {
+      dev: "tsx src/server.ts",
+      build: "tsc -p tsconfig.json",
+      test: "vitest run"
+    },
+    dependencies: {
+      "@modelcontextprotocol/sdk": "^1.17.0",
+      zod: "^3.25.0"
+    },
+    devDependencies: {
+      "@types/node": "^24.0.0",
+      tsx: "^4.20.0",
+      typescript: "^5.8.0",
+      vitest: "^3.2.0"
+    }
+  };
+}
+
+function renderTsconfig() {
+  return `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src", "tests"]
+}
+`;
+}
+
+function renderDockerfile() {
+  return `FROM node:22-slim
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+RUN npm run build
+CMD ["npm", "run", "dev"]
+`;
+}
+
+function renderGeneratedCi() {
+  return `name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+`;
+}
+
+function renderEnvExample(authPreset, serverUrl) {
+  const lines = [`API_BASE_URL=${serverUrl}`];
+
+  if (authPreset === "bearer") {
+    lines.push("BEARER_TOKEN=replace-me");
+  }
+
+  if (authPreset === "apikey") {
+    lines.push("API_KEY_HEADER=x-api-key");
+    lines.push("API_KEY_VALUE=replace-me");
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function renderGeneratedReadme(context) {
+  const operationTable = context.operations
+    .map((operation) => `- \`${operation.toolName}\` -> ${operation.method} ${operation.path}`)
+    .join("\n");
+
+  return `# ${context.projectName}
+
+Generated by ShipMCP from \`${context.title}\`.
+
+## What this project includes
+
+- MCP stdio server
+- Generated tool handlers from OpenAPI operations
+- ${context.authPreset === "none" ? "No auth preset" : `${context.authPreset} auth preset`}
+- Dockerfile
+- GitHub Actions CI
+- Smoke tests
+
+## Quick start
+
+\`\`\`bash
+npm install
+cp .env.example .env
+npm run dev
+\`\`\`
+
+## Generated tools
+
+${operationTable}
+
+## Notes
+
+- Review generated tool names before publishing.
+- Replace placeholder auth values in \`.env\`.
+- Extend \`src/client.ts\` if your API needs custom signing or retries.
+`;
+}
+
+function renderServerTs(context) {
+  return `import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+import { callApi } from "./client.js";
+import { generatedTools } from "./tools.js";
+
+const server = new McpServer({
+  name: "${context.projectName}",
+  version: "0.1.0"
+});
+
+for (const tool of generatedTools) {
+  server.tool(tool.name, tool.inputSchema, async (input) => {
+    const response = await callApi(tool, input);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(response, null, 2)
+        }
+      ]
+    };
+  });
+}
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+`;
+}
+
+function renderClientTs(authPreset, serverUrl) {
+  const authResolver =
+    authPreset === "bearer"
+      ? `  const token = process.env.BEARER_TOKEN;
+  if (!token) {
+    throw new Error("Missing BEARER_TOKEN in environment.");
+  }
+  return { Authorization: \`Bearer \${token}\` };`
+      : authPreset === "apikey"
+        ? `  const headerName = process.env.API_KEY_HEADER ?? "x-api-key";
+  const value = process.env.API_KEY_VALUE;
+  if (!value) {
+    throw new Error("Missing API_KEY_VALUE in environment.");
+  }
+  return { [headerName]: value };`
+        : "  return {};";
+
+  return `import type { GeneratedTool } from "./tools.js";
+
+type ToolInput = Record<string, unknown>;
+
+export async function callApi(tool: GeneratedTool, input: ToolInput) {
+  const request = tool.buildRequest(input);
+  const baseUrl = process.env.API_BASE_URL ?? "${serverUrl}";
+  const url = new URL(request.path, baseUrl);
+
+  for (const [key, value] of request.query.entries()) {
+    url.searchParams.set(key, value);
+  }
+
+  const headers = {
+    ...resolveAuthHeaders(),
+    ...request.headers
+  };
+
+  const response = await fetch(url, {
+    method: tool.method,
+    headers,
+    body: request.body === undefined ? undefined : JSON.stringify(request.body)
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(\`API request failed with \${response.status}: \${text}\`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function resolveAuthHeaders(): Record<string, string> {
+${authResolver}
+}
+`;
+}
+
+function renderToolsTs(operations) {
+  const entries = operations.map(renderToolEntry).join(",\n\n");
+
+  return `import { z } from "zod";
+
+export type GeneratedTool = {
+  name: string;
+  method: string;
+  path: string;
+  description: string;
+  inputSchema: Record<string, z.ZodTypeAny>;
+  buildRequest: (input: Record<string, unknown>) => {
+    path: string;
+    query: URLSearchParams;
+    headers: Record<string, string>;
+    body?: unknown;
+  };
+};
+
+export const generatedTools: GeneratedTool[] = [
+${entries}
+];
+`;
+}
+
+function renderToolEntry(operation) {
+  const inputs = [...operation.parameters];
+
+  if (operation.requestBody) {
+    inputs.push({
+      ...operation.requestBody
+    });
+  }
+
+  const schemaEntries =
+    inputs.length === 0
+      ? ""
+      : inputs
+          .map(
+            (input) =>
+              `      ${input.name}: ${toZodExpression(input.schemaType, input.required)}`
+          )
+          .join(",\n");
+
+  const buildPath = renderPathExpression(operation.path);
+  const queryLines = operation.parameters
+    .filter((parameter) => parameter.source === "query")
+    .map(
+      (parameter) =>
+        `      if (input.${parameter.name} !== undefined) query.set("${parameter.originalName}", String(input.${parameter.name}));`
+    )
+    .join("\n");
+  const headerLines = operation.parameters
+    .filter((parameter) => parameter.source === "header")
+    .map(
+      (parameter) =>
+        `      if (input.${parameter.name} !== undefined) headers["${parameter.originalName}"] = String(input.${parameter.name});`
+    )
+    .join("\n");
+
+  const bodyLines = operation.requestBody
+    ? `      if (input.body !== undefined) {
+        headers["content-type"] = "application/json";
+        body = input.body;
+      }`
+    : "";
+
+  return `  {
+    name: "${operation.toolName}",
+    method: "${operation.method}",
+    path: "${operation.path}",
+    description: "${escapeText(operation.summary)}",
+    inputSchema: {
+${schemaEntries}
+    },
+    buildRequest(input) {
+      const query = new URLSearchParams();
+      const headers: Record<string, string> = {};
+      let body: unknown = undefined;
+      const resolvedPath = ${buildPath};
+${queryLines}
+${headerLines}
+${bodyLines}
+      return {
+        path: resolvedPath,
+        query,
+        headers,
+        body
+      };
+    }
+  }`;
+}
+
+function renderPathExpression(routePath) {
+  const template = routePath.replace(/\{([^}]+)\}/g, (_, value) => `\${encodeURIComponent(String(input.${toSafeIdentifier(value)}))}`);
+  return `\`${template}\``;
+}
+
+function renderSmokeTest(projectName) {
+  return `import { describe, expect, it } from "vitest";
+
+import { generatedTools } from "../src/tools.js";
+
+describe("${projectName}", () => {
+  it("emits at least one tool", () => {
+    expect(generatedTools.length).toBeGreaterThan(0);
+  });
+});
+`;
+}
+
+function renderApiTest() {
+  return `import { describe, expect, it } from "vitest";
+
+import { generatedTools } from "../src/tools.js";
+
+describe("generated tool metadata", () => {
+  it("uses stable tool names", () => {
+    const names = generatedTools.map((tool) => tool.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+});
+`;
+}
+
+async function writeFiles(rootDir, files) {
+  for (const [relativePath, content] of Object.entries(files)) {
+    const targetPath = path.join(rootDir, relativePath);
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.writeFile(targetPath, content, "utf8");
+  }
+}
+
+async function readSpecSource(specRef) {
+  if (/^https?:\/\//i.test(specRef)) {
+    const response = await fetch(specRef);
+
+    if (!response.ok) {
+      throw new Error(`Failed to download spec: ${response.status} ${response.statusText}`);
+    }
+
+    return response.text();
+  }
+
+  return fs.readFile(path.resolve(process.cwd(), specRef), "utf8");
+}
+
+function slug(value) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "shipmcp-project";
+}
+
+function toSafeIdentifier(value) {
+  const normalized = String(value)
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  const withPrefix = /^[0-9]/.test(normalized) ? `value_${normalized}` : normalized;
+  return withPrefix || "value";
+}
+
+function buildPathToolName(method, routePath) {
+  const pieces = routePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) =>
+      segment.startsWith("{") ? `by_${toSafeIdentifier(segment.slice(1, -1))}` : toSafeIdentifier(segment)
+    );
+
+  return [method.toLowerCase(), ...pieces].join("_");
+}
+
+function toZodExpression(schemaType, required) {
+  const base =
+    schemaType === "integer" || schemaType === "number"
+      ? "z.number()"
+      : schemaType === "boolean"
+        ? "z.boolean()"
+        : schemaType === "array"
+          ? "z.array(z.unknown())"
+          : schemaType === "object"
+            ? "z.record(z.string(), z.unknown())"
+            : "z.string()";
+
+  return required ? base : `${base}.optional()`;
+}
+
+function escapeText(value) {
+  return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
