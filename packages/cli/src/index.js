@@ -36,30 +36,37 @@ async function main() {
 
   const specRef = argv[0];
   const flags = parseFlags(argv.slice(1));
+  const filterOptions = buildFilterOptions(flags);
 
   if (command === "validate") {
-    await runValidate(specRef, flags);
+    await runValidate(specRef, flags, filterOptions);
     return;
   }
 
   if (command === "init" || command === "generate") {
-    await runGenerate(specRef, flags);
+    await runGenerate(specRef, flags, filterOptions);
     return;
   }
 
   fail(`Unknown command: ${command}`);
 }
 
-async function runValidate(specRef, flags) {
+async function runValidate(specRef, flags, filterOptions) {
   const spec = await loadSpec(specRef);
-  const validation = validateSpec(spec);
-  const summary = summarizeSpec(spec);
+  const validation = validateSpec(spec, { filterOptions });
+  const summary = summarizeSpec(spec, { filterOptions });
   const authPreset = detectAuthPreset(spec, flags.auth ?? "auto");
 
   console.log(`Spec: ${summary.title}`);
   console.log(`Version: ${summary.version}`);
   console.log(`Paths: ${summary.pathCount}`);
   console.log(`Operations: ${summary.operationCount}`);
+
+  if (hasActiveFilters(filterOptions)) {
+    console.log(`Selected operations: ${summary.selectedOperationCount}`);
+    console.log(`Filters: ${formatFilters(filterOptions)}`);
+  }
+
   console.log(`Suggested auth preset: ${authPreset}`);
 
   if (validation.warnings.length > 0) {
@@ -84,7 +91,7 @@ async function runValidate(specRef, flags) {
   console.log("Validation passed.");
 }
 
-async function runGenerate(specRef, flags) {
+async function runGenerate(specRef, flags, filterOptions) {
   const outputDir = flags.out
     ? path.resolve(process.cwd(), flags.out)
     : undefined;
@@ -94,13 +101,21 @@ async function runGenerate(specRef, flags) {
     outDir: outputDir,
     projectName: flags.name,
     authPreset: flags.auth ?? "auto",
+    filterOptions,
     yes: flags.yes ?? false
   });
 
   console.log(`Generated project: ${result.outDir}`);
   console.log(`Project name: ${result.projectName}`);
   console.log(`Detected auth preset: ${result.authPreset}`);
-  console.log(`Operations emitted: ${result.operationCount}`);
+
+  if (result.filterSummary) {
+    console.log(`Operations emitted: ${result.operationCount} of ${result.totalOperationCount}`);
+    console.log(`Filters: ${result.filterSummary}`);
+  } else {
+    console.log(`Operations emitted: ${result.operationCount}`);
+  }
+
   console.log("");
   console.log("Next:");
   console.log(`  cd ${result.outDir}`);
@@ -130,11 +145,57 @@ function printHelp() {
   console.log("ShipMCP");
   console.log("");
   console.log("Usage:");
-  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none]");
-  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none]");
-  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none]");
+  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
+  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
+  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods]");
   console.log("  shipmcp doctor");
   console.log("  shipmcp dev");
+}
+
+function buildFilterOptions(flags) {
+  return {
+    includeTags: parseList(flags["include-tags"]),
+    excludeTags: parseList(flags["exclude-tags"]),
+    includeMethods: parseList(flags["include-methods"]),
+    excludeMethods: parseList(flags["exclude-methods"])
+  };
+}
+
+function parseList(value) {
+  if (!value) {
+    return [];
+  }
+
+  return String(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function hasActiveFilters(filterOptions) {
+  return Object.values(filterOptions).some((entries) => Array.isArray(entries) && entries.length > 0);
+}
+
+function formatFilters(filterOptions) {
+  const parts = [];
+
+  if (filterOptions.includeTags.length > 0) {
+    parts.push(`include-tags=${filterOptions.includeTags.join(",")}`);
+  }
+
+  if (filterOptions.excludeTags.length > 0) {
+    parts.push(`exclude-tags=${filterOptions.excludeTags.join(",")}`);
+  }
+
+  if (filterOptions.includeMethods.length > 0) {
+    parts.push(`include-methods=${filterOptions.includeMethods.join(",")}`);
+  }
+
+  if (filterOptions.excludeMethods.length > 0) {
+    parts.push(`exclude-methods=${filterOptions.excludeMethods.join(",")}`);
+  }
+
+  return parts.join(" | ");
 }
 
 function parseFlags(argv) {

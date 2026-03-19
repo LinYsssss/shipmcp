@@ -29,6 +29,7 @@
       "get": {
         "operationId": "listPets",
         "summary": "List pets",
+        "tags": ["pets"],
         "parameters": [
           {
             "name": "limit",
@@ -48,6 +49,7 @@
       "post": {
         "operationId": "createPet",
         "summary": "Create a new pet",
+        "tags": ["pets"],
         "requestBody": {
           "required": true,
           "content": {
@@ -77,6 +79,7 @@
       "get": {
         "operationId": "getPet",
         "summary": "Get a pet by ID",
+        "tags": ["pets", "details"],
         "parameters": [
           {
             "name": "petId",
@@ -99,6 +102,18 @@
         "responses": {
           "200": {
             "description": "A single pet."
+          }
+        }
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "operationId": "getAdminStats",
+        "summary": "Get admin stats",
+        "tags": ["admin"],
+        "responses": {
+          "200": {
+            "description": "Admin statistics."
           }
         }
       }

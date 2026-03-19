@@ -19,13 +19,13 @@ export async function loadSpec(specRef) {
   }
 }
 
-export function validateSpec(spec) {
+export function validateSpec(spec, options = {}) {
   const errors = [];
   const warnings = [];
 
   if (!spec || typeof spec !== "object") {
     errors.push("Spec must be a JSON object.");
-    return { ok: false, errors, warnings };
+    return { ok: false, errors, warnings, operationCount: 0, selectedOperationCount: 0 };
   }
 
   if (!spec.openapi || typeof spec.openapi !== "string" || !spec.openapi.startsWith("3.")) {
@@ -40,24 +40,40 @@ export function validateSpec(spec) {
     warnings.push("Missing info.title. ShipMCP will fall back to a generic project name.");
   }
 
-  const operations = collectOperations(spec);
-  if (operations.length === 0) {
+  const allOperations = collectOperations(spec);
+  const filterOptions = normalizeFilterOptions(options.filterOptions);
+  const selectedOperations = applyOperationFilters(allOperations, filterOptions);
+
+  if (allOperations.length === 0) {
     errors.push("Spec does not contain any HTTP operations ShipMCP can generate.");
+  }
+
+  if (allOperations.length > 0 && hasActiveFilters(filterOptions) && selectedOperations.length === 0) {
+    errors.push("Applied filters excluded every operation. Relax your tag or method filters.");
   }
 
   return {
     ok: errors.length === 0,
     errors,
-    warnings
+    warnings,
+    operationCount: allOperations.length,
+    selectedOperationCount: selectedOperations.length
   };
 }
 
-export function summarizeSpec(spec) {
+export function summarizeSpec(spec, options = {}) {
+  const allOperations = collectOperations(spec);
+  const selectedOperations = applyOperationFilters(
+    allOperations,
+    normalizeFilterOptions(options.filterOptions)
+  );
+
   return {
     title: spec.info?.title ?? "Generated MCP API",
     version: spec.info?.version ?? "0.1.0",
     pathCount: Object.keys(spec.paths ?? {}).length,
-    operationCount: collectOperations(spec).length
+    operationCount: allOperations.length,
+    selectedOperationCount: selectedOperations.length
   };
 }
 
@@ -85,17 +101,18 @@ export function detectAuthPreset(spec, requested = "auto") {
 
 export async function generateProject(options) {
   const spec = await loadSpec(options.specRef);
-  const validation = validateSpec(spec);
+  const filterOptions = normalizeFilterOptions(options.filterOptions);
+  const validation = validateSpec(spec, { filterOptions });
 
   if (!validation.ok) {
     throw new Error(`Spec validation failed:\n- ${validation.errors.join("\n- ")}`);
   }
 
-  const summary = summarizeSpec(spec);
+  const summary = summarizeSpec(spec, { filterOptions });
   const authPreset = detectAuthPreset(spec, options.authPreset);
   const projectName = options.projectName ?? slug(summary.title);
   const outDir = options.outDir ?? path.resolve(process.cwd(), projectName);
-  const operations = normalizeOperations(collectOperations(spec));
+  const operations = normalizeOperations(applyOperationFilters(collectOperations(spec), filterOptions));
   const serverUrl = resolveServerUrl(spec);
   const files = renderProjectFiles({
     projectName,
@@ -104,7 +121,8 @@ export async function generateProject(options) {
     spec,
     operations,
     authPreset,
-    serverUrl
+    serverUrl,
+    filterOptions
   });
 
   await fs.mkdir(outDir, { recursive: true });
@@ -114,7 +132,9 @@ export async function generateProject(options) {
     outDir,
     projectName,
     authPreset,
-    operationCount: operations.length
+    operationCount: operations.length,
+    totalOperationCount: summary.operationCount,
+    filterSummary: formatFilterSummary(filterOptions)
   };
 }
 
@@ -138,6 +158,7 @@ function collectOperations(spec) {
         operationId: operation.operationId ?? null,
         summary: operation.summary ?? operation.description ?? `${method.toUpperCase()} ${routePath}`,
         description: operation.description ?? "",
+        tags: Array.isArray(operation.tags) ? operation.tags.map((tag) => String(tag)) : [],
         parameters: parameters.map(toInputParameter),
         requestBody: toRequestBodyInput(operation.requestBody)
       });
@@ -145,6 +166,94 @@ function collectOperations(spec) {
   }
 
   return operations;
+}
+
+function applyOperationFilters(operations, filterOptions) {
+  const normalized = normalizeFilterOptions(filterOptions);
+  const includeTagSet = new Set(normalized.includeTags.map((entry) => entry.toLowerCase()));
+  const excludeTagSet = new Set(normalized.excludeTags.map((entry) => entry.toLowerCase()));
+  const includeMethodSet = new Set(normalized.includeMethods.map((entry) => entry.toUpperCase()));
+  const excludeMethodSet = new Set(normalized.excludeMethods.map((entry) => entry.toUpperCase()));
+
+  return operations.filter((operation) => {
+    const method = operation.method.toUpperCase();
+    const tags = operation.tags.map((tag) => tag.toLowerCase());
+
+    if (includeMethodSet.size > 0 && !includeMethodSet.has(method)) {
+      return false;
+    }
+
+    if (excludeMethodSet.has(method)) {
+      return false;
+    }
+
+    if (includeTagSet.size > 0 && !tags.some((tag) => includeTagSet.has(tag))) {
+      return false;
+    }
+
+    if (excludeTagSet.size > 0 && tags.some((tag) => excludeTagSet.has(tag))) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function normalizeFilterOptions(filterOptions = {}) {
+  return {
+    includeTags: normalizeList(filterOptions.includeTags),
+    excludeTags: normalizeList(filterOptions.excludeTags),
+    includeMethods: normalizeList(filterOptions.includeMethods).map((entry) => entry.toUpperCase()),
+    excludeMethods: normalizeList(filterOptions.excludeMethods).map((entry) => entry.toUpperCase())
+  };
+}
+
+function normalizeList(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((entry) => String(entry).split(","))
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return String(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function hasActiveFilters(filterOptions) {
+  return Object.values(filterOptions).some((entries) => Array.isArray(entries) && entries.length > 0);
+}
+
+function formatFilterSummary(filterOptions) {
+  if (!hasActiveFilters(filterOptions)) {
+    return null;
+  }
+
+  const parts = [];
+
+  if (filterOptions.includeTags.length > 0) {
+    parts.push(`include-tags=${filterOptions.includeTags.join(",")}`);
+  }
+
+  if (filterOptions.excludeTags.length > 0) {
+    parts.push(`exclude-tags=${filterOptions.excludeTags.join(",")}`);
+  }
+
+  if (filterOptions.includeMethods.length > 0) {
+    parts.push(`include-methods=${filterOptions.includeMethods.join(",")}`);
+  }
+
+  if (filterOptions.excludeMethods.length > 0) {
+    parts.push(`exclude-methods=${filterOptions.excludeMethods.join(",")}`);
+  }
+
+  return parts.join(" | ");
 }
 
 function normalizeOperations(operations) {
@@ -349,6 +458,10 @@ function renderGeneratedReadme(context) {
   const operationTable = context.operations
     .map((operation) => `- \`${operation.toolName}\` -> ${operation.method} ${operation.path}`)
     .join("\n");
+  const filterSummary = formatFilterSummary(context.filterOptions);
+  const filterSection = filterSummary
+    ? `\n## Generation filters\n\n- ${filterSummary}\n`
+    : "";
 
   return `# ${context.projectName}
 
@@ -362,7 +475,7 @@ Generated by ShipMCP from \`${context.title}\`.
 - Dockerfile
 - GitHub Actions CI
 - Smoke tests
-
+${filterSection}
 ## Quick start
 
 \`\`\`bash
@@ -669,4 +782,3 @@ function toZodExpression(schemaType, required) {
 function escapeText(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
-
