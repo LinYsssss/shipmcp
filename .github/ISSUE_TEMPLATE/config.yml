@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: ShipMCP Discussions
+    url: https://github.com/LinYsssss/shipmcp/discussions
+    about: Use discussions for open-ended ideas, launch feedback, and API requests.

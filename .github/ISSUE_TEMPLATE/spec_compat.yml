@@ -1,0 +1,39 @@
+name: Spec Compatibility
+about: Report an OpenAPI spec that ShipMCP cannot handle correctly
+labels: spec-compat
+body:
+  - type: textarea
+    id: spec
+    attributes:
+      label: Spec or reduced repro
+      description: Link the spec, attach a reduced example, or paste the relevant fragment.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command used
+      description: Paste the exact ShipMCP command.
+    validations:
+      required: true
+  - type: textarea
+    id: current_output
+    attributes:
+      label: Current output
+    validations:
+      required: true
+  - type: textarea
+    id: expected_output
+    attributes:
+      label: Expected output
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Auth type
+      options:
+        - none
+        - apiKey
+        - bearer
+        - other
