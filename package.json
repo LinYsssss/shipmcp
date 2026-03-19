@@ -1,0 +1,19 @@
+{
+  "name": "shipmcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn any OpenAPI spec into a production-ready MCP server.",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --test",
+    "test": "node --test",
+    "validate:petstore": "node packages/cli/src/index.js validate examples/specs/petstore.json",
+    "generate:petstore": "node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-mcp --yes"
+  }
+}
