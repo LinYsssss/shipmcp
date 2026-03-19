@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/LinYsssss/shipmcp/actions/workflows/ci.yml/badge.svg)](https://github.com/LinYsssss/shipmcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/LinYsssss/shipmcp?include_prereleases&label=release)](https://github.com/LinYsssss/shipmcp/releases/tag/v0.1.0-bootstrap)
 [![Stars](https://img.shields.io/github/stars/LinYsssss/shipmcp?style=social)](https://github.com/LinYsssss/shipmcp/stargazers)
 
 Turn any OpenAPI spec into a production-ready MCP server in under 90 seconds.
@@ -175,4 +176,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
 
