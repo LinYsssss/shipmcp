@@ -625,6 +625,7 @@ async function readSpecSource(specRef) {
 function slug(value) {
   return String(value)
     .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "shipmcp-project";
@@ -668,3 +669,4 @@ function toZodExpression(schemaType, required) {
 function escapeText(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
+
