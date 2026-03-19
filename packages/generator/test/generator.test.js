@@ -6,10 +6,11 @@ import assert from "node:assert/strict";
 
 import { generateProject, loadSpec, summarizeSpec, validateSpec } from "../src/index.js";
 
-const fixturePath = path.resolve("examples/specs/petstore.json");
+const jsonFixturePath = path.resolve("examples/specs/petstore.json");
+const yamlFixturePath = path.resolve("examples/specs/petstore.yaml");
 
-test("validateSpec accepts the bundled petstore fixture", async () => {
-  const spec = await loadSpec(fixturePath);
+test("validateSpec accepts the bundled petstore JSON fixture", async () => {
+  const spec = await loadSpec(jsonFixturePath);
   const result = validateSpec(spec);
   const summary = summarizeSpec(spec);
 
@@ -19,8 +20,19 @@ test("validateSpec accepts the bundled petstore fixture", async () => {
   assert.equal(summary.selectedOperationCount, 4);
 });
 
+test("loadSpec parses YAML fixtures and keeps operation counts stable", async () => {
+  const spec = await loadSpec(yamlFixturePath);
+  const result = validateSpec(spec);
+  const summary = summarizeSpec(spec);
+
+  assert.equal(result.ok, true);
+  assert.equal(summary.title, "Acme Petstore YAML API");
+  assert.equal(summary.operationCount, 4);
+  assert.equal(summary.selectedOperationCount, 4);
+});
+
 test("summarizeSpec reflects active tag and method filters", async () => {
-  const spec = await loadSpec(fixturePath);
+  const spec = await loadSpec(jsonFixturePath);
   const summary = summarizeSpec(spec, {
     filterOptions: {
       includeTags: ["pets"],
@@ -36,7 +48,7 @@ test("generateProject writes a runnable scaffold", async () => {
   const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-"));
 
   const result = await generateProject({
-    specRef: fixturePath,
+    specRef: jsonFixturePath,
     outDir: targetDir,
     authPreset: "auto"
   });
@@ -54,7 +66,7 @@ test("generateProject respects includeTags and excludeMethods filters", async ()
   const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-filtered-"));
 
   const result = await generateProject({
-    specRef: fixturePath,
+    specRef: jsonFixturePath,
     outDir: targetDir,
     authPreset: "auto",
     filterOptions: {
@@ -74,4 +86,25 @@ test("generateProject respects includeTags and excludeMethods filters", async ()
   assert.doesNotMatch(toolsFile, /get_admin_stats/);
   assert.match(generatedReadme, /include-tags=pets/);
   assert.match(generatedReadme, /exclude-methods=POST/);
+});
+
+test("generateProject supports YAML specs with local refs and json-like request bodies", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-yaml-"));
+
+  const result = await generateProject({
+    specRef: yamlFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+  const envFile = await fs.readFile(path.join(targetDir, ".env.example"), "utf8");
+
+  assert.equal(result.projectName, "acme-petstore-yaml-api");
+  assert.equal(result.authPreset, "bearer");
+  assert.equal(result.operationCount, 4);
+  assert.match(toolsFile, /petId: z\.string\(\)/);
+  assert.match(toolsFile, /body: z\.record\(z\.string\(\), z\.unknown\(\)\)/);
+  assert.match(toolsFile, /create_pet/);
+  assert.match(envFile, /BEARER_TOKEN=replace-me/);
 });

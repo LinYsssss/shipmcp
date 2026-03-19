@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Acme Petstore YAML API
+  version: 1.0.0
+servers:
+  - url: https://api.acme.test
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    PetId:
+      name: petId
+      in: path
+      required: true
+      description: Path parameter petId
+      schema:
+        $ref: '#/components/schemas/PetId'
+  requestBodies:
+    PetInput:
+      required: true
+      content:
+        application/merge-patch+json:
+          schema:
+            $ref: '#/components/schemas/PetInput'
+  schemas:
+    PetId:
+      type: string
+    PetInput:
+      type: object
+      properties:
+        name:
+          type: string
+        species:
+          type: string
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets
+      tags:
+        - pets
+      parameters:
+        - name: limit
+          in: query
+          description: query parameter limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A paged array of pets.
+    post:
+      operationId: createPet
+      summary: Create a new pet
+      tags:
+        - pets
+      requestBody:
+        $ref: '#/components/requestBodies/PetInput'
+      responses:
+        '201':
+          description: Created.
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      summary: Get a pet by ID
+      tags:
+        - pets
+        - details
+      parameters:
+        - $ref: '#/components/parameters/PetId'
+      responses:
+        '200':
+          description: A single pet.
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      summary: Get admin stats
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Admin statistics.

@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { parse as parseYaml } from "yaml";
+
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"];
 
 export async function loadSpec(specRef) {
@@ -8,15 +10,78 @@ export async function loadSpec(specRef) {
 
   try {
     return JSON.parse(raw);
-  } catch (error) {
-    if (/\.ya?ml(?:$|\?)/i.test(specRef)) {
+  } catch (jsonError) {
+    try {
+      const parsed = parseYaml(raw, {
+        prettyErrors: true,
+        strict: false
+      });
+
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Parsed document is not an OpenAPI object.");
+      }
+
+      return parsed;
+    } catch (yamlError) {
       throw new Error(
-        "This bootstrap currently supports JSON OpenAPI files only. YAML parsing is next on the roadmap."
+        `Failed to parse OpenAPI document as JSON or YAML: ${yamlError.message}`
       );
     }
-
-    throw new Error(`Failed to parse OpenAPI document as JSON: ${error.message}`);
   }
+}
+
+function resolveMaybeRef(spec, value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  let current = value;
+  const seenRefs = new Set();
+
+  while (
+    current &&
+    typeof current === "object" &&
+    !Array.isArray(current) &&
+    typeof current.$ref === "string"
+  ) {
+    const ref = current.$ref;
+
+    if (!ref.startsWith("#/")) {
+      return current;
+    }
+
+    if (seenRefs.has(ref)) {
+      throw new Error(`Circular local $ref detected: ${ref}`);
+    }
+
+    seenRefs.add(ref);
+    current = resolveLocalRef(spec, ref);
+  }
+
+  return current;
+}
+
+function resolveLocalRef(spec, ref) {
+  const segments = ref
+    .slice(2)
+    .split("/")
+    .map(readRefSegment);
+
+  let current = spec;
+
+  for (const segment of segments) {
+    if (!current || typeof current !== "object" || !(segment in current)) {
+      throw new Error(`Unresolved local $ref: ${ref}`);
+    }
+
+    current = current[segment];
+  }
+
+  return current;
+}
+
+function readRefSegment(segment) {
+  return segment.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 
 export function validateSpec(spec, options = {}) {
@@ -24,7 +89,7 @@ export function validateSpec(spec, options = {}) {
   const warnings = [];
 
   if (!spec || typeof spec !== "object") {
-    errors.push("Spec must be a JSON object.");
+    errors.push("Spec must be a JSON or YAML object.");
     return { ok: false, errors, warnings, operationCount: 0, selectedOperationCount: 0 };
   }
 
@@ -141,16 +206,17 @@ export async function generateProject(options) {
 function collectOperations(spec) {
   const operations = [];
 
-  for (const [routePath, routeConfig] of Object.entries(spec.paths ?? {})) {
+  for (const [routePath, routeValue] of Object.entries(spec.paths ?? {})) {
+    const routeConfig = resolveMaybeRef(spec, routeValue);
     const pathParameters = Array.isArray(routeConfig?.parameters) ? routeConfig.parameters : [];
 
     for (const method of HTTP_METHODS) {
-      const operation = routeConfig?.[method];
+      const operation = resolveMaybeRef(spec, routeConfig?.[method]);
       if (!operation || typeof operation !== "object") {
         continue;
       }
 
-      const parameters = mergeParameters(pathParameters, operation.parameters ?? []);
+      const parameters = mergeParameters(spec, pathParameters, operation.parameters ?? []);
 
       operations.push({
         method: method.toUpperCase(),
@@ -159,8 +225,8 @@ function collectOperations(spec) {
         summary: operation.summary ?? operation.description ?? `${method.toUpperCase()} ${routePath}`,
         description: operation.description ?? "",
         tags: Array.isArray(operation.tags) ? operation.tags.map((tag) => String(tag)) : [],
-        parameters: parameters.map(toInputParameter),
-        requestBody: toRequestBodyInput(operation.requestBody)
+        parameters: parameters.map((parameter) => toInputParameter(spec, parameter)),
+        requestBody: toRequestBodyInput(spec, operation.requestBody)
       });
     }
   }
@@ -276,11 +342,13 @@ function normalizeOperations(operations) {
   });
 }
 
-function mergeParameters(pathParameters, operationParameters) {
+function mergeParameters(spec, pathParameters, operationParameters) {
   const byKey = new Map();
 
-  for (const parameter of [...pathParameters, ...operationParameters]) {
-    if (!parameter || typeof parameter !== "object" || parameter.$ref) {
+  for (const parameterValue of [...pathParameters, ...operationParameters]) {
+    const parameter = resolveMaybeRef(spec, parameterValue);
+
+    if (!parameter || typeof parameter !== "object" || !parameter.name) {
       continue;
     }
 
@@ -290,8 +358,8 @@ function mergeParameters(pathParameters, operationParameters) {
   return [...byKey.values()];
 }
 
-function toInputParameter(parameter) {
-  const type = readSchemaType(parameter.schema);
+function toInputParameter(spec, parameter) {
+  const type = readSchemaType(spec, parameter.schema);
 
   return {
     originalName: parameter.name,
@@ -303,12 +371,14 @@ function toInputParameter(parameter) {
   };
 }
 
-function toRequestBodyInput(requestBody) {
-  if (!requestBody || typeof requestBody !== "object" || requestBody.$ref) {
+function toRequestBodyInput(spec, requestBodyValue) {
+  const requestBody = resolveMaybeRef(spec, requestBodyValue);
+
+  if (!requestBody || typeof requestBody !== "object") {
     return null;
   }
 
-  const jsonContent = requestBody.content?.["application/json"];
+  const jsonContent = findJsonContent(requestBody.content);
   if (!jsonContent) {
     return null;
   }
@@ -317,11 +387,31 @@ function toRequestBodyInput(requestBody) {
     name: "body",
     required: Boolean(requestBody.required),
     description: "JSON request body",
-    schemaType: readSchemaType(jsonContent.schema)
+    schemaType: readSchemaType(spec, jsonContent.schema)
   };
 }
 
-function readSchemaType(schema) {
+function findJsonContent(content) {
+  if (!content || typeof content !== "object") {
+    return null;
+  }
+
+  if (content["application/json"]) {
+    return content["application/json"];
+  }
+
+  for (const [contentType, value] of Object.entries(content)) {
+    if (/^application\/(.+\+)?json$/i.test(contentType)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function readSchemaType(spec, schemaValue) {
+  const schema = resolveMaybeRef(spec, schemaValue);
+
   if (!schema || typeof schema !== "object") {
     return "string";
   }
@@ -330,7 +420,24 @@ function readSchemaType(schema) {
     return schema.type;
   }
 
-  if (schema.properties) {
+  if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf) || Array.isArray(schema.allOf)) {
+    const variants = schema.oneOf ?? schema.anyOf ?? schema.allOf ?? [];
+    const inferredTypes = [...new Set(variants.map((entry) => readSchemaType(spec, entry)))];
+
+    if (inferredTypes.length === 1) {
+      return inferredTypes[0];
+    }
+
+    if (inferredTypes.includes("object")) {
+      return "object";
+    }
+
+    if (inferredTypes.includes("array")) {
+      return "array";
+    }
+  }
+
+  if (schema.properties || schema.additionalProperties) {
     return "object";
   }
 

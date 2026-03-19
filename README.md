@@ -56,13 +56,14 @@ ShipMCP currently focuses on the minimum path that matters:
 
 - OpenAPI `3.x`
 - local or remote spec input
-- JSON-first bootstrap
+- JSON and YAML spec input
 - TypeScript MCP server output
 - `API Key` and `Bearer Token` auth presets
 - generated tests
 - generated Dockerfile
 - generated GitHub Actions CI
 - generated project README
+- local `#/components/...` $ref resolution for parameters, request bodies, and schemas
 - tag and HTTP method filtering
 
 Explicitly not in v0.1:
@@ -78,13 +79,19 @@ Explicitly not in v0.1:
 Validate the bundled spec:
 
 ```bash
-node packages/cli/src/index.js validate examples/specs/petstore.json
+node packages/cli/src/index.js validate examples/specs/petstore.yaml
 ```
 
-Generate a sample MCP repo:
+Generate a sample MCP repo from JSON:
 
 ```bash
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-mcp --yes
+```
+
+Generate the same sample from YAML with local refs:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.yaml --out sandbox/petstore-yaml --yes
 ```
 
 Generate only the `pets` tools and skip `POST` endpoints:
@@ -114,7 +121,7 @@ Filtering is the first practical control layer:
 
 ## Example output
 
-The bundled sample currently generates these tools before filtering:
+The bundled JSON and YAML samples currently generate these tools before filtering:
 
 - `list_pets` -> `GET /pets`
 - `create_pet` -> `POST /pets`
@@ -174,11 +181,11 @@ docs/
 
 ## Near-term focus
 
-1. Improve real-world OpenAPI compatibility.
-2. Add YAML support.
-3. Expand filter coverage and operation selection.
-4. Improve schema flattening and naming quality.
-5. Add more showcase examples for launch.
+1. Improve real-world OpenAPI compatibility beyond local refs.
+2. Expand filter coverage and operation selection.
+3. Improve schema flattening and composed-schema naming quality.
+4. Add more showcase examples for launch.
+5. Tighten generated runtime error handling.
 
 ## Contributing
 
