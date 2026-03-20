@@ -1,0 +1,93 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Response Aware Filter API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://responses.example"
+    }
+  ],
+  "paths": {
+    "/reports/json": {
+      "get": {
+        "operationId": "listJsonReports",
+        "summary": "List JSON reports",
+        "responses": {
+          "200": {
+            "description": "JSON report list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/problem": {
+      "get": {
+        "operationId": "getProblemReport",
+        "summary": "Get problem report",
+        "responses": {
+          "200": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assets/logo": {
+      "get": {
+        "operationId": "getLogo",
+        "summary": "Get logo",
+        "responses": {
+          "200": {
+            "description": "Logo image",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Health check",
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        }
+      }
+    }
+  }
+}

@@ -239,6 +239,7 @@ function collectOperations(spec) {
         deprecated: Boolean(operation.deprecated),
         tags: Array.isArray(operation.tags) ? operation.tags.map((tag) => String(tag)) : [],
         responseStatuses: Object.keys(operation.responses ?? {}),
+        responseContentTypes: collectResponseContentTypes(operation.responses),
         parameters: parameters.map((parameter) => toInputParameter(spec, parameter)),
         requestBody: toRequestBodyInput(spec, operation.requestBody)
       });
@@ -246,6 +247,20 @@ function collectOperations(spec) {
   }
 
   return operations;
+}
+
+function collectResponseContentTypes(responses) {
+  const contentTypes = new Set();
+
+  for (const response of Object.values(responses ?? {})) {
+    const resolvedResponse = response && typeof response === "object" ? response : null;
+
+    for (const contentType of Object.keys(resolvedResponse?.content ?? {})) {
+      contentTypes.add(contentType);
+    }
+  }
+
+  return [...contentTypes];
 }
 
 function applyOperationFilters(operations, filterOptions) {
@@ -260,12 +275,15 @@ function applyOperationFilters(operations, filterOptions) {
   const excludeOperationIdMatchers = normalized.excludeOperationIds.map(buildWildcardMatcher);
   const includeResponseStatusMatchers = normalized.includeResponseStatuses.map(buildWildcardMatcher);
   const excludeResponseStatusMatchers = normalized.excludeResponseStatuses.map(buildWildcardMatcher);
+  const includeResponseContentTypeMatchers = normalized.includeResponseContentTypes.map(buildWildcardMatcher);
+  const excludeResponseContentTypeMatchers = normalized.excludeResponseContentTypes.map(buildWildcardMatcher);
 
   return operations.filter((operation) => {
     const method = operation.method.toUpperCase();
     const tags = operation.tags.map((tag) => tag.toLowerCase());
     const operationId = operation.operationId ?? "";
     const responseStatuses = operation.responseStatuses ?? [];
+    const responseContentTypes = operation.responseContentTypes ?? [];
 
     if (normalized.deprecatedOnly && !operation.deprecated) {
       return false;
@@ -323,6 +341,14 @@ function applyOperationFilters(operations, filterOptions) {
       return false;
     }
 
+
+    if (includeResponseContentTypeMatchers.length > 0 && !matchesAnyWildcardFilter(responseContentTypes, includeResponseContentTypeMatchers)) {
+      return false;
+    }
+
+    if (excludeResponseContentTypeMatchers.length > 0 && matchesAnyWildcardFilter(responseContentTypes, excludeResponseContentTypeMatchers)) {
+      return false;
+    }
     return true;
   });
 }
@@ -339,6 +365,8 @@ function normalizeFilterOptions(filterOptions = {}) {
     excludeOperationIds: normalizeList(filterOptions.excludeOperationIds),
     includeResponseStatuses: normalizeList(filterOptions.includeResponseStatuses),
     excludeResponseStatuses: normalizeList(filterOptions.excludeResponseStatuses),
+    includeResponseContentTypes: normalizeList(filterOptions.includeResponseContentTypes),
+    excludeResponseContentTypes: normalizeList(filterOptions.excludeResponseContentTypes),
     deprecatedOnly: Boolean(filterOptions.deprecatedOnly),
     excludeDeprecated: Boolean(filterOptions.excludeDeprecated)
   };
@@ -415,6 +443,14 @@ function formatFilterSummary(filterOptions) {
     parts.push(`exclude-response-statuses=${filterOptions.excludeResponseStatuses.join(",")}`);
   }
 
+
+  if (filterOptions.includeResponseContentTypes.length > 0) {
+    parts.push(`include-response-content-types=${filterOptions.includeResponseContentTypes.join(",")}`);
+  }
+
+  if (filterOptions.excludeResponseContentTypes.length > 0) {
+    parts.push(`exclude-response-content-types=${filterOptions.excludeResponseContentTypes.join(",")}`);
+  }
   if (filterOptions.deprecatedOnly) {
     parts.push("deprecated-only=true");
   }

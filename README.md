@@ -68,7 +68,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - structured object and array Zod input generation for parameters and JSON bodies
 - OpenAPI 3.1 nullable type-array handling such as `type: ["string", "null"]`
 - improved `additionalProperties` generation for record-like maps and mixed objects
-- tag, HTTP method, path, operationId, response-status, and deprecated-operation filtering
+- tag, HTTP method, path, operationId, response-status, response content-type, and deprecated-operation filtering
 
 Explicitly not in v0.1:
 
@@ -122,6 +122,12 @@ Generate only deprecated operations that return `201`:
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-deprecated --deprecated-only --include-response-statuses 201 --yes
 ```
 
+Generate only operations with JSON-style responses:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/response-aware-filter.json --out sandbox/response-aware-json --include-response-content-types application/json,application/*+json --yes
+```
+
 Run the local project checks:
 
 ```bash
@@ -146,6 +152,8 @@ Filtering is the first practical control layer:
 - `--exclude-operation-ids create*,delete*`
 - `--include-response-statuses 200,201,2*`
 - `--exclude-response-statuses 4*,5*`
+- `--include-response-content-types application/json,application/*+json`
+- `--exclude-response-content-types image/*,application/octet-stream`
 - `--deprecated-only`
 - `--exclude-deprecated`
 

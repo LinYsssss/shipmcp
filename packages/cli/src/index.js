@@ -146,9 +146,9 @@ function printHelp() {
   console.log("ShipMCP");
   console.log("");
   console.log("Usage:");
-  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
-  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
-  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--include-response-content-types types] [--exclude-response-content-types types] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--include-response-content-types types] [--exclude-response-content-types types] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--include-response-content-types types] [--exclude-response-content-types types] [--deprecated-only] [--exclude-deprecated]");
   console.log("  shipmcp doctor");
   console.log("  shipmcp dev");
 }
@@ -165,6 +165,8 @@ function buildFilterOptions(flags) {
     excludeOperationIds: parseList(flags["exclude-operation-ids"]),
     includeResponseStatuses: parseList(flags["include-response-statuses"]),
     excludeResponseStatuses: parseList(flags["exclude-response-statuses"]),
+    includeResponseContentTypes: parseList(flags["include-response-content-types"]),
+    excludeResponseContentTypes: parseList(flags["exclude-response-content-types"]),
     deprecatedOnly: Boolean(flags["deprecated-only"]),
     excludeDeprecated: Boolean(flags["exclude-deprecated"])
   };
@@ -230,6 +232,14 @@ function formatFilters(filterOptions) {
     parts.push(`exclude-response-statuses=${filterOptions.excludeResponseStatuses.join(",")}`);
   }
 
+
+  if (filterOptions.includeResponseContentTypes.length > 0) {
+    parts.push(`include-response-content-types=${filterOptions.includeResponseContentTypes.join(",")}`);
+  }
+
+  if (filterOptions.excludeResponseContentTypes.length > 0) {
+    parts.push(`exclude-response-content-types=${filterOptions.excludeResponseContentTypes.join(",")}`);
+  }
   if (filterOptions.deprecatedOnly) {
     parts.push("deprecated-only=true");
   }

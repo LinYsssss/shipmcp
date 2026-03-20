@@ -10,6 +10,7 @@ const jsonFixturePath = path.resolve("examples/specs/petstore.json");
 const yamlFixturePath = path.resolve("examples/specs/petstore.yaml");
 const compatibilityJsonFixturePath = path.resolve("examples/specs/compatibility-nullable.json");
 const compatibilityYamlFixturePath = path.resolve("examples/specs/compatibility-nullable.yaml");
+const responseAwareFixturePath = path.resolve("examples/specs/response-aware-filter.json");
 const snapshotDir = path.resolve("packages/generator/test/__snapshots__");
 
 function normalizeText(value) {
@@ -328,5 +329,42 @@ test("generateProject supports OpenAPI 3.1 nullable type arrays and additionalPr
   assert.match(toolsFile, /displayName: z\.string\(\)\.nullable\(\)\.optional\(\)/);
   assert.match(toolsFile, /labels: z\.record\(z\.string\(\)\)\.optional\(\)/);
   assert.match(toolsFile, /metrics: z\.object\(\{[\s\S]*stable: z\.boolean\(\)\.optional\(\)[\s\S]*\}\)\.catchall\(z\.number\(\)\.int\(\)\)\.optional\(\)/);
+});
+test("summarizeSpec reflects response content-type filters", async () => {
+  const spec = await loadSpec(responseAwareFixturePath);
+  const summary = summarizeSpec(spec, {
+    filterOptions: {
+      includeResponseContentTypes: ["application/json", "application/*+json"]
+    }
+  });
+
+  assert.equal(summary.operationCount, 4);
+  assert.equal(summary.selectedOperationCount, 2);
+});
+
+test("generateProject respects response content-type filters", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-response-content-filter-"));
+
+  const result = await generateProject({
+    specRef: responseAwareFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    filterOptions: {
+      includeResponseContentTypes: ["application/json", "application/*+json"],
+      excludeResponseContentTypes: ["image/*"]
+    }
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+  const generatedReadme = await fs.readFile(path.join(targetDir, "README.md"), "utf8");
+
+  assert.equal(result.operationCount, 2);
+  assert.equal(result.totalOperationCount, 4);
+  assert.match(toolsFile, /list_json_reports/);
+  assert.match(toolsFile, /get_problem_report/);
+  assert.doesNotMatch(toolsFile, /get_logo/);
+  assert.doesNotMatch(toolsFile, /health_check/);
+  assert.match(generatedReadme, /include-response-content-types=application\/json,application\/\*\+json/);
+  assert.match(generatedReadme, /exclude-response-content-types=image\/\*/);
 });
 
