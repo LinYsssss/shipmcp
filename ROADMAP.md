@@ -6,6 +6,7 @@
 - MCP TypeScript project generator
 - API Key and Bearer auth presets
 - generated tests, Docker, and CI
+- stdio and HTTP transport templates
 - tag and method filtering
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
 - three example specs and launch-quality README
@@ -14,8 +15,8 @@
 
 - richer response-aware selection beyond status-code and deprecated filters
 - schema normalization for discriminated unions, nullable composed inputs, and additionalProperties
-- HTTP transport template
-- generator snapshot coverage
+- real-world OpenAPI compatibility for dirtier specs
+- generator snapshot coverage across stdio and HTTP templates
 
 ## v0.3
 
@@ -32,5 +33,3 @@ Every roadmap item must improve one of these:
 - output quality
 - onboarding speed
 - contribution surface
-
-

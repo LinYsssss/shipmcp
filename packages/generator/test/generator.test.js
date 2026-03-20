@@ -1,4 +1,4 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -86,6 +86,27 @@ test("generateProject writes a runnable scaffold", async () => {
   assert.equal(result.operationCount, 4);
   assert.match(packageJson, /@modelcontextprotocol\/sdk/);
   assert.match(serverFile, /McpServer/);
+});
+
+test("generateProject writes an HTTP transport template when requested", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-http-"));
+
+  await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    transport: "http"
+  });
+
+  const packageJson = await fs.readFile(path.join(targetDir, "package.json"), "utf8");
+  const serverFile = await fs.readFile(path.join(targetDir, "src", "server.ts"), "utf8");
+  const envFile = await fs.readFile(path.join(targetDir, ".env.example"), "utf8");
+
+  assert.match(packageJson, /"express"/);
+  assert.match(serverFile, /StreamableHTTPServerTransport/);
+  assert.match(serverFile, /createMcpExpressApp/);
+  assert.ok(serverFile.includes(`app.post("/mcp"`));
+  assert.match(envFile, /PORT=3000/);
 });
 
 test("generateProject respects includeTags and excludeMethods filters", async () => {
@@ -189,3 +210,4 @@ test("generateProject supports YAML specs with local refs and json-like request 
   assert.match(toolsFile, /create_pet/);
   assert.match(envFile, /BEARER_TOKEN=replace-me/);
 });
+

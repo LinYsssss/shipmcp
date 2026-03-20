@@ -57,7 +57,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - OpenAPI `3.x`
 - local or remote spec input
 - JSON and YAML spec input
-- TypeScript MCP server output
+- TypeScript MCP server output for `stdio` and `http` transport
 - `API Key` and `Bearer Token` auth presets
 - generated tests
 - generated Dockerfile
@@ -87,6 +87,12 @@ Generate a sample MCP repo from JSON:
 
 ```bash
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-mcp --yes
+```
+
+Generate an HTTP MCP repo from the same spec:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-http --transport http --yes
 ```
 
 Generate the same sample from YAML with local refs:
@@ -227,4 +233,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
 

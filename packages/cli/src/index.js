@@ -101,6 +101,7 @@ async function runGenerate(specRef, flags, filterOptions) {
     outDir: outputDir,
     projectName: flags.name,
     authPreset: flags.auth ?? "auto",
+    transport: flags.transport ?? "stdio",
     filterOptions,
     yes: flags.yes ?? false
   });
@@ -108,6 +109,7 @@ async function runGenerate(specRef, flags, filterOptions) {
   console.log(`Generated project: ${result.outDir}`);
   console.log(`Project name: ${result.projectName}`);
   console.log(`Detected auth preset: ${result.authPreset}`);
+  console.log(`Transport: ${result.transport}`);
 
   if (result.filterSummary) {
     console.log(`Operations emitted: ${result.operationCount} of ${result.totalOperationCount}`);
@@ -123,7 +125,6 @@ async function runGenerate(specRef, flags, filterOptions) {
   console.log("  cp .env.example .env");
   console.log("  npm run dev");
 }
-
 function runDoctor() {
   const report = inspectEnvironment();
 
@@ -145,8 +146,8 @@ function printHelp() {
   console.log("ShipMCP");
   console.log("");
   console.log("Usage:");
-  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
-  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--transport stdio|http] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
   console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
   console.log("  shipmcp doctor");
   console.log("  shipmcp dev");
@@ -279,3 +280,5 @@ main().catch((error) => {
   console.error(error.message);
   process.exit(1);
 });
+
+
