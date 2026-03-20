@@ -60,6 +60,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - TypeScript MCP server output for `stdio` and `http` transport
 - `API Key` and `Bearer Token` auth presets
 - generated tests
+- generator snapshot coverage for stdio and HTTP key files
 - generated Dockerfile
 - generated GitHub Actions CI
 - generated project README
@@ -214,7 +215,7 @@ docs/
 1. Improve real-world OpenAPI compatibility beyond local refs.
 2. Expand schema normalization for discriminated unions, nullable composed inputs, and additionalProperties edge cases.
 3. Expand response-aware selection beyond status-code and deprecated filters.
-4. Add more showcase examples for launch.
+4. Expand snapshot coverage to YAML and filtered generation scenarios.
 5. Tighten generated runtime error handling.
 
 ## Contributing

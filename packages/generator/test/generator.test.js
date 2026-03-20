@@ -8,6 +8,22 @@ import { generateProject, loadSpec, summarizeSpec, validateSpec } from "../src/i
 
 const jsonFixturePath = path.resolve("examples/specs/petstore.json");
 const yamlFixturePath = path.resolve("examples/specs/petstore.yaml");
+const snapshotDir = path.resolve("packages/generator/test/__snapshots__");
+
+function normalizeText(value) {
+  return String(value).replaceAll("\r\n", "\n");
+}
+
+async function readSnapshot(name) {
+  return normalizeText(await fs.readFile(path.join(snapshotDir, name), "utf8"));
+}
+
+async function assertSnapshotMatches(targetDir, filePath, snapshotName) {
+  const actual = normalizeText(await fs.readFile(path.join(targetDir, filePath), "utf8"));
+  const expected = await readSnapshot(snapshotName);
+
+  assert.equal(actual, expected, `Snapshot mismatch for ${snapshotName}`);
+}
 
 test("validateSpec accepts the bundled petstore JSON fixture", async () => {
   const spec = await loadSpec(jsonFixturePath);
@@ -107,6 +123,39 @@ test("generateProject writes an HTTP transport template when requested", async (
   assert.match(serverFile, /createMcpExpressApp/);
   assert.ok(serverFile.includes(`app.post("/mcp"`));
   assert.match(envFile, /PORT=3000/);
+});
+
+test("generateProject matches stdio key-file snapshots", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-snapshot-stdio-"));
+
+  await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  await assertSnapshotMatches(targetDir, "package.json", "stdio-package.json.snap");
+  await assertSnapshotMatches(targetDir, "src/server.ts", "stdio-server.ts.snap");
+  await assertSnapshotMatches(targetDir, "src/tools.ts", "stdio-tools.ts.snap");
+  await assertSnapshotMatches(targetDir, "README.md", "stdio-readme.md.snap");
+  await assertSnapshotMatches(targetDir, ".env.example", "stdio-env.example.snap");
+});
+
+test("generateProject matches http key-file snapshots", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-snapshot-http-"));
+
+  await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    transport: "http"
+  });
+
+  await assertSnapshotMatches(targetDir, "package.json", "http-package.json.snap");
+  await assertSnapshotMatches(targetDir, "src/server.ts", "http-server.ts.snap");
+  await assertSnapshotMatches(targetDir, "src/tools.ts", "http-tools.ts.snap");
+  await assertSnapshotMatches(targetDir, "README.md", "http-readme.md.snap");
+  await assertSnapshotMatches(targetDir, ".env.example", "http-env.example.snap");
 });
 
 test("generateProject respects includeTags and excludeMethods filters", async () => {

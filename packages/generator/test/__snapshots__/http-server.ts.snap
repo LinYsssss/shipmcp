@@ -1,0 +1,88 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+
+import { callApi } from "./client.js";
+import { generatedTools } from "./tools.js";
+
+function createServer() {
+  const server = new McpServer({
+    name: "acme-petstore-api",
+    version: "0.1.0"
+  });
+
+  for (const tool of generatedTools) {
+    server.tool(tool.name, tool.inputSchema, async (input) => {
+      const response = await callApi(tool, input);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response, null, 2)
+          }
+        ]
+      };
+    });
+  }
+
+  return server;
+}
+
+const app = createMcpExpressApp();
+
+app.post("/mcp", async (req, res) => {
+  const server = createServer();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined
+  });
+
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    console.error("Error handling MCP request:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Internal server error"
+        },
+        id: null
+      });
+    }
+  }
+
+  res.on("close", () => {
+    transport.close();
+    server.close();
+  });
+});
+
+app.get("/mcp", (_req, res) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: {
+      code: -32000,
+      message: "Method not allowed."
+    },
+    id: null
+  });
+});
+
+app.delete("/mcp", (_req, res) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: {
+      code: -32000,
+      message: "Method not allowed."
+    },
+    id: null
+  });
+});
+
+const port = Number(process.env.PORT ?? "3000");
+app.listen(port, () => {
+  console.log("MCP HTTP server listening on http://localhost:" + port + "/mcp");
+});
