@@ -1,0 +1,30 @@
+openapi: 3.1.0
+info:
+  title: Multi Type Array YAML API
+  version: 1.0.0
+servers:
+  - url: https://multitype-yaml.example
+paths:
+  /payload:
+    post:
+      operationId: createMultiTypePayload
+      summary: Create payload with multi-type fields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idOrName:
+                  type:
+                    - string
+                    - integer
+                statusOrCode:
+                  type:
+                    - string
+                    - integer
+                    - "null"
+      responses:
+        '201':
+          description: Created.

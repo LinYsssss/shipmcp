@@ -14,7 +14,7 @@
 ## v0.2
 
 - richer response-aware selection beyond status-code and deprecated filters
-- schema normalization for discriminated unions, broader multi-type arrays, and remaining additionalProperties edge cases
+- schema normalization for discriminated unions, object/array multi-type arrays, and remaining additionalProperties edge cases
 - real-world OpenAPI compatibility for dirtier specs
 - generator snapshot coverage across stdio and HTTP templates
 
@@ -33,4 +33,5 @@ Every roadmap item must improve one of these:
 - output quality
 - onboarding speed
 - contribution surface
+
 

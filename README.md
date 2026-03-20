@@ -66,7 +66,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - generated project README
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
 - structured object and array Zod input generation for parameters and JSON bodies
-- OpenAPI 3.1 nullable type-array handling such as `type: ["string", "null"]`
+- OpenAPI 3.1 nullable and scalar multi-type array handling such as `type: ["string", "null"]` and `type: ["string", "integer"]`
 - improved `additionalProperties` generation for record-like maps and mixed objects
 - tag, HTTP method, path, operationId, response-status, response content-type, and deprecated-operation filtering
 
@@ -244,4 +244,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
 

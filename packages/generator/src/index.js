@@ -584,6 +584,12 @@ function renderRequiredZodExpression(spec, schemaValue) {
     return renderEnumZodExpression(schema.enum);
   }
 
+  const multiTypeArrayExpression = renderMultiTypeArrayZodExpression(schema);
+
+  if (multiTypeArrayExpression) {
+    return multiTypeArrayExpression;
+  }
+
   const normalizedSchema = normalizeSchemaShape(schema);
   let expression;
 
@@ -616,6 +622,61 @@ function renderRequiredZodExpression(spec, schemaValue) {
   }
 
   return expression;
+}
+
+function renderMultiTypeArrayZodExpression(schema) {
+  const typeArrayInfo = getTypeArrayInfo(schema);
+
+  if (!typeArrayInfo || typeArrayInfo.nonNullTypes.length <= 1) {
+    return null;
+  }
+
+  if (!typeArrayInfo.nonNullTypes.every(isScalarSchemaType)) {
+    return null;
+  }
+
+  const expressions = [...new Set(typeArrayInfo.nonNullTypes.map(renderScalarTypeZodExpression))];
+  let expression = expressions.length === 1 ? expressions[0] : `z.union([${expressions.join(", ")}])`;
+
+  if (typeArrayInfo.containsNull || schema.nullable) {
+    expression += ".nullable()";
+  }
+
+  return expression;
+}
+
+function getTypeArrayInfo(schema) {
+  if (!schema || typeof schema !== "object" || !Array.isArray(schema.type)) {
+    return null;
+  }
+
+  const nonNullTypes = schema.type.filter((entry) => entry !== "null");
+  const containsNull = nonNullTypes.length !== schema.type.length;
+
+  return {
+    nonNullTypes,
+    containsNull
+  };
+}
+
+function isScalarSchemaType(type) {
+  return ["string", "integer", "number", "boolean"].includes(type);
+}
+
+function renderScalarTypeZodExpression(type) {
+  if (type === "integer") {
+    return "z.number().int()";
+  }
+
+  if (type === "number") {
+    return "z.number()";
+  }
+
+  if (type === "boolean") {
+    return "z.boolean()";
+  }
+
+  return "z.string()";
 }
 
 function normalizeSchemaShape(schema) {
@@ -753,6 +814,22 @@ function inferSchemaType(spec, schemaValue) {
 
   if (!schema || typeof schema !== "object") {
     return "string";
+  }
+
+  const typeArrayInfo = getTypeArrayInfo(schema);
+
+  if (typeArrayInfo && typeArrayInfo.nonNullTypes.length > 1) {
+    if (typeArrayInfo.nonNullTypes.every(isScalarSchemaType)) {
+      return "string";
+    }
+
+    if (typeArrayInfo.nonNullTypes.includes("object")) {
+      return "object";
+    }
+
+    if (typeArrayInfo.nonNullTypes.includes("array")) {
+      return "array";
+    }
   }
 
   const normalizedSchema = normalizeSchemaShape(schema);

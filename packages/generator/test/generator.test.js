@@ -11,6 +11,8 @@ const yamlFixturePath = path.resolve("examples/specs/petstore.yaml");
 const compatibilityJsonFixturePath = path.resolve("examples/specs/compatibility-nullable.json");
 const compatibilityYamlFixturePath = path.resolve("examples/specs/compatibility-nullable.yaml");
 const responseAwareFixturePath = path.resolve("examples/specs/response-aware-filter.json");
+const multiTypeArrayJsonFixturePath = path.resolve("examples/specs/multi-type-array.json");
+const multiTypeArrayYamlFixturePath = path.resolve("examples/specs/multi-type-array.yaml");
 const snapshotDir = path.resolve("packages/generator/test/__snapshots__");
 
 function normalizeText(value) {
@@ -366,5 +368,38 @@ test("generateProject respects response content-type filters", async () => {
   assert.doesNotMatch(toolsFile, /health_check/);
   assert.match(generatedReadme, /include-response-content-types=application\/json,application\/\*\+json/);
   assert.match(generatedReadme, /exclude-response-content-types=image\/\*/);
+});
+test("generateProject supports scalar multi-type arrays in JSON fixtures", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-multitype-json-"));
+
+  const result = await generateProject({
+    specRef: multiTypeArrayJsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+
+  assert.equal(result.projectName, "multi-type-array-json-api");
+  assert.equal(result.operationCount, 1);
+  assert.ok(toolsFile.includes("idOrName: z.union([z.string(), z.number().int()]).optional()"));
+  assert.ok(toolsFile.includes("statusOrCode: z.union([z.string(), z.number().int()]).nullable().optional()"));
+});
+
+test("generateProject supports scalar multi-type arrays in YAML fixtures", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-multitype-yaml-"));
+
+  const result = await generateProject({
+    specRef: multiTypeArrayYamlFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+
+  assert.equal(result.projectName, "multi-type-array-yaml-api");
+  assert.equal(result.operationCount, 1);
+  assert.ok(toolsFile.includes("idOrName: z.union([z.string(), z.number().int()]).optional()"));
+  assert.ok(toolsFile.includes("statusOrCode: z.union([z.string(), z.number().int()]).nullable().optional()"));
 });
 
