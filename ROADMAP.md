@@ -12,7 +12,7 @@
 
 ## v0.2
 
-- response-aware and deprecated-operation selection
+- richer response-aware selection beyond status-code filters
 - better schema flattening
 - better oneOf/anyOf/allOf handling
 - HTTP transport template

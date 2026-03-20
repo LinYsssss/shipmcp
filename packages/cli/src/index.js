@@ -145,9 +145,9 @@ function printHelp() {
   console.log("ShipMCP");
   console.log("");
   console.log("Usage:");
-  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
-  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
-  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids]");
+  console.log("  shipmcp init <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp generate <spec> [--out dir] [--name value] [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
+  console.log("  shipmcp validate <spec> [--auth auto|apikey|bearer|none] [--include-tags tags] [--exclude-tags tags] [--include-methods methods] [--exclude-methods methods] [--include-paths paths] [--exclude-paths paths] [--include-operation-ids ids] [--exclude-operation-ids ids] [--include-response-statuses codes] [--exclude-response-statuses codes] [--deprecated-only] [--exclude-deprecated]");
   console.log("  shipmcp doctor");
   console.log("  shipmcp dev");
 }
@@ -161,7 +161,11 @@ function buildFilterOptions(flags) {
     includePaths: parseList(flags["include-paths"]),
     excludePaths: parseList(flags["exclude-paths"]),
     includeOperationIds: parseList(flags["include-operation-ids"]),
-    excludeOperationIds: parseList(flags["exclude-operation-ids"])
+    excludeOperationIds: parseList(flags["exclude-operation-ids"]),
+    includeResponseStatuses: parseList(flags["include-response-statuses"]),
+    excludeResponseStatuses: parseList(flags["exclude-response-statuses"]),
+    deprecatedOnly: Boolean(flags["deprecated-only"]),
+    excludeDeprecated: Boolean(flags["exclude-deprecated"])
   };
 }
 
@@ -177,7 +181,9 @@ function parseList(value) {
 }
 
 function hasActiveFilters(filterOptions) {
-  return Object.values(filterOptions).some((entries) => Array.isArray(entries) && entries.length > 0);
+  return Object.values(filterOptions).some((value) =>
+    Array.isArray(value) ? value.length > 0 : value === true
+  );
 }
 
 function formatFilters(filterOptions) {
@@ -213,6 +219,22 @@ function formatFilters(filterOptions) {
 
   if (filterOptions.excludeOperationIds.length > 0) {
     parts.push(`exclude-operation-ids=${filterOptions.excludeOperationIds.join(",")}`);
+  }
+
+  if (filterOptions.includeResponseStatuses.length > 0) {
+    parts.push(`include-response-statuses=${filterOptions.includeResponseStatuses.join(",")}`);
+  }
+
+  if (filterOptions.excludeResponseStatuses.length > 0) {
+    parts.push(`exclude-response-statuses=${filterOptions.excludeResponseStatuses.join(",")}`);
+  }
+
+  if (filterOptions.deprecatedOnly) {
+    parts.push("deprecated-only=true");
+  }
+
+  if (filterOptions.excludeDeprecated) {
+    parts.push("exclude-deprecated=true");
   }
 
   return parts.join(" | ");

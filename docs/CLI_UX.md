@@ -35,16 +35,20 @@ shipmcp dev
 --exclude-paths /admin/*
 --include-operation-ids listPets,getPet
 --exclude-operation-ids create*,delete*
+--include-response-statuses 200,201,2*
+--exclude-response-statuses 4*,5*
+--deprecated-only
+--exclude-deprecated
 ```
 
 这些过滤器的作用是先裁剪 OpenAPI operation，再生成 MCP tools。对大 spec 很关键，否则会一次性吐出过多 tools，导致 README、测试和使用体验都变差。
 
-其中 `--include-paths`、`--exclude-paths`、`--include-operation-ids`、`--exclude-operation-ids` 支持 `*` 通配。
+其中 `--include-paths`、`--exclude-paths`、`--include-operation-ids`、`--exclude-operation-ids`、`--include-response-statuses`、`--exclude-response-statuses` 支持 `*` 通配。
 
 典型验证命令：
 
 ```bash
-shipmcp validate examples/specs/petstore.yaml --include-paths /pets* --exclude-operation-ids create*
+shipmcp validate examples/specs/petstore.yaml --deprecated-only --include-response-statuses 201
 ```
 
 ## 关键体验要求

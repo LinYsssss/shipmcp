@@ -49,6 +49,7 @@
       "post": {
         "operationId": "createPet",
         "summary": "Create a new pet",
+        "deprecated": true,
         "tags": ["pets"],
         "requestBody": {
           "required": true,

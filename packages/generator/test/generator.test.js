@@ -57,6 +57,19 @@ test("summarizeSpec reflects path and operationId wildcard filters", async () =>
   assert.equal(summary.selectedOperationCount, 2);
 });
 
+test("summarizeSpec reflects deprecated-only and response-status filters", async () => {
+  const spec = await loadSpec(jsonFixturePath);
+  const summary = summarizeSpec(spec, {
+    filterOptions: {
+      deprecatedOnly: true,
+      includeResponseStatuses: ["201"]
+    }
+  });
+
+  assert.equal(summary.operationCount, 4);
+  assert.equal(summary.selectedOperationCount, 1);
+});
+
 test("generateProject writes a runnable scaffold", async () => {
   const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-"));
 
@@ -125,6 +138,30 @@ test("generateProject respects includePaths and excludeOperationIds filters", as
   assert.doesNotMatch(toolsFile, /get_admin_stats/);
   assert.match(generatedReadme, /include-paths=\/pets\*/);
   assert.match(generatedReadme, /exclude-operation-ids=create\*/);
+});
+
+test("generateProject respects deprecated and response-status filters", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-response-filtered-"));
+
+  const result = await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    filterOptions: {
+      deprecatedOnly: true,
+      includeResponseStatuses: ["201"]
+    }
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+  const generatedReadme = await fs.readFile(path.join(targetDir, "README.md"), "utf8");
+
+  assert.equal(result.operationCount, 1);
+  assert.equal(result.totalOperationCount, 4);
+  assert.match(toolsFile, /create_pet/);
+  assert.doesNotMatch(toolsFile, /list_pets/);
+  assert.match(generatedReadme, /deprecated-only=true/);
+  assert.match(generatedReadme, /include-response-statuses=201/);
 });
 
 test("generateProject supports YAML specs with local refs and json-like request bodies", async () => {

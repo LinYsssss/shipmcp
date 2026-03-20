@@ -224,7 +224,9 @@ function collectOperations(spec) {
         operationId: operation.operationId ?? null,
         summary: operation.summary ?? operation.description ?? `${method.toUpperCase()} ${routePath}`,
         description: operation.description ?? "",
+        deprecated: Boolean(operation.deprecated),
         tags: Array.isArray(operation.tags) ? operation.tags.map((tag) => String(tag)) : [],
+        responseStatuses: Object.keys(operation.responses ?? {}),
         parameters: parameters.map((parameter) => toInputParameter(spec, parameter)),
         requestBody: toRequestBodyInput(spec, operation.requestBody)
       });
@@ -244,11 +246,22 @@ function applyOperationFilters(operations, filterOptions) {
   const excludePathMatchers = normalized.excludePaths.map(buildWildcardMatcher);
   const includeOperationIdMatchers = normalized.includeOperationIds.map(buildWildcardMatcher);
   const excludeOperationIdMatchers = normalized.excludeOperationIds.map(buildWildcardMatcher);
+  const includeResponseStatusMatchers = normalized.includeResponseStatuses.map(buildWildcardMatcher);
+  const excludeResponseStatusMatchers = normalized.excludeResponseStatuses.map(buildWildcardMatcher);
 
   return operations.filter((operation) => {
     const method = operation.method.toUpperCase();
     const tags = operation.tags.map((tag) => tag.toLowerCase());
     const operationId = operation.operationId ?? "";
+    const responseStatuses = operation.responseStatuses ?? [];
+
+    if (normalized.deprecatedOnly && !operation.deprecated) {
+      return false;
+    }
+
+    if (normalized.excludeDeprecated && operation.deprecated) {
+      return false;
+    }
 
     if (includeMethodSet.size > 0 && !includeMethodSet.has(method)) {
       return false;
@@ -290,6 +303,14 @@ function applyOperationFilters(operations, filterOptions) {
       return false;
     }
 
+    if (includeResponseStatusMatchers.length > 0 && !matchesAnyWildcardFilter(responseStatuses, includeResponseStatusMatchers)) {
+      return false;
+    }
+
+    if (excludeResponseStatusMatchers.length > 0 && matchesAnyWildcardFilter(responseStatuses, excludeResponseStatusMatchers)) {
+      return false;
+    }
+
     return true;
   });
 }
@@ -303,7 +324,11 @@ function normalizeFilterOptions(filterOptions = {}) {
     includePaths: normalizeList(filterOptions.includePaths),
     excludePaths: normalizeList(filterOptions.excludePaths),
     includeOperationIds: normalizeList(filterOptions.includeOperationIds),
-    excludeOperationIds: normalizeList(filterOptions.excludeOperationIds)
+    excludeOperationIds: normalizeList(filterOptions.excludeOperationIds),
+    includeResponseStatuses: normalizeList(filterOptions.includeResponseStatuses),
+    excludeResponseStatuses: normalizeList(filterOptions.excludeResponseStatuses),
+    deprecatedOnly: Boolean(filterOptions.deprecatedOnly),
+    excludeDeprecated: Boolean(filterOptions.excludeDeprecated)
   };
 }
 
@@ -326,7 +351,9 @@ function normalizeList(value) {
 }
 
 function hasActiveFilters(filterOptions) {
-  return Object.values(filterOptions).some((entries) => Array.isArray(entries) && entries.length > 0);
+  return Object.values(filterOptions).some((value) =>
+    Array.isArray(value) ? value.length > 0 : value === true
+  );
 }
 
 function formatFilterSummary(filterOptions) {
@@ -368,6 +395,22 @@ function formatFilterSummary(filterOptions) {
     parts.push(`exclude-operation-ids=${filterOptions.excludeOperationIds.join(",")}`);
   }
 
+  if (filterOptions.includeResponseStatuses.length > 0) {
+    parts.push(`include-response-statuses=${filterOptions.includeResponseStatuses.join(",")}`);
+  }
+
+  if (filterOptions.excludeResponseStatuses.length > 0) {
+    parts.push(`exclude-response-statuses=${filterOptions.excludeResponseStatuses.join(",")}`);
+  }
+
+  if (filterOptions.deprecatedOnly) {
+    parts.push("deprecated-only=true");
+  }
+
+  if (filterOptions.excludeDeprecated) {
+    parts.push("exclude-deprecated=true");
+  }
+
   return parts.join(" | ");
 }
 
@@ -381,6 +424,10 @@ function buildWildcardMatcher(pattern) {
 
 function matchesWildcardFilters(value, matchers) {
   return matchers.some((matcher) => matcher.test(String(value)));
+}
+
+function matchesAnyWildcardFilter(values, matchers) {
+  return values.some((value) => matchesWildcardFilters(value, matchers));
 }
 
 function normalizeOperations(operations) {

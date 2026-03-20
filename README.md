@@ -64,7 +64,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - generated GitHub Actions CI
 - generated project README
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
-- tag, HTTP method, path, and operationId filtering
+- tag, HTTP method, path, operationId, response-status, and deprecated-operation filtering
 
 Explicitly not in v0.1:
 
@@ -106,6 +106,12 @@ Generate only `/pets*` paths while excluding matching operationIds with wildcard
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-focused --include-paths /pets* --exclude-operation-ids create* --yes
 ```
 
+Generate only deprecated operations that return `201`:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-deprecated --deprecated-only --include-response-statuses 201 --yes
+```
+
 Run the local project checks:
 
 ```bash
@@ -128,8 +134,12 @@ Filtering is the first practical control layer:
 - `--exclude-paths /admin/*`
 - `--include-operation-ids listPets,getPet`
 - `--exclude-operation-ids create*,delete*`
+- `--include-response-statuses 200,201,2*`
+- `--exclude-response-statuses 4*,5*`
+- `--deprecated-only`
+- `--exclude-deprecated`
 
-Path and operationId filters support `*` wildcards.
+Path, operationId, and response-status filters support `*` wildcards.
 
 ## Example output
 
@@ -196,7 +206,7 @@ docs/
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
 2. Improve schema flattening and composed-schema naming quality.
-3. Add response-aware and deprecated-operation selection.
+3. Expand response-aware selection beyond status-code filters.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.
 
