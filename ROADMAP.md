@@ -12,9 +12,8 @@
 
 ## v0.2
 
-- richer response-aware selection beyond status-code filters
-- deeper schema flattening for nullable, enum, and composed schemas
-- better oneOf/anyOf/allOf handling
+- richer response-aware selection beyond status-code and deprecated filters
+- schema normalization for discriminated unions, nullable composed inputs, and additionalProperties
 - HTTP transport template
 - generator snapshot coverage
 
@@ -33,3 +32,5 @@ Every roadmap item must improve one of these:
 - output quality
 - onboarding speed
 - contribution surface
+
+

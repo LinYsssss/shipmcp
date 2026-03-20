@@ -1,4 +1,4 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
@@ -536,21 +536,30 @@ function renderRequiredZodExpression(spec, schemaValue) {
     return renderEnumZodExpression(schema.enum);
   }
 
-  const normalizedType = inferSchemaType(spec, schema);
   let expression;
 
-  if (normalizedType === "integer") {
-    expression = "z.number().int()";
-  } else if (normalizedType === "number") {
-    expression = "z.number()";
-  } else if (normalizedType === "boolean") {
-    expression = "z.boolean()";
-  } else if (normalizedType === "array") {
-    expression = `z.array(${renderRequiredZodExpression(spec, schema.items)})`;
-  } else if (normalizedType === "object") {
-    expression = renderObjectZodExpression(spec, schema);
+  if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
+    expression = renderAllOfZodExpression(spec, schema);
+  } else if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
+    expression = renderUnionZodExpression(spec, schema.oneOf);
+  } else if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
+    expression = renderUnionZodExpression(spec, schema.anyOf);
   } else {
-    expression = "z.string()";
+    const normalizedType = inferSchemaType(spec, schema);
+
+    if (normalizedType === "integer") {
+      expression = "z.number().int()";
+    } else if (normalizedType === "number") {
+      expression = "z.number()";
+    } else if (normalizedType === "boolean") {
+      expression = "z.boolean()";
+    } else if (normalizedType === "array") {
+      expression = `z.array(${renderRequiredZodExpression(spec, schema.items)})`;
+    } else if (normalizedType === "object") {
+      expression = renderObjectZodExpression(spec, schema);
+    } else {
+      expression = "z.string()";
+    }
   }
 
   if (schema.nullable) {
@@ -582,6 +591,73 @@ function renderObjectZodExpression(spec, schema) {
   return expression;
 }
 
+function renderAllOfZodExpression(spec, schema) {
+  const variants = schema.allOf
+    .map((entry) => resolveMaybeRef(spec, entry))
+    .filter((entry) => entry && typeof entry === "object");
+
+  if (variants.length === 0) {
+    return "z.object({})";
+  }
+
+  if (variants.every((entry) => inferSchemaType(spec, entry) === "object")) {
+    return renderObjectZodExpression(spec, mergeAllOfObjectSchemas(variants));
+  }
+
+  return renderIntersectionZodExpression(spec, variants);
+}
+
+function mergeAllOfObjectSchemas(schemas) {
+  const merged = {
+    type: "object",
+    properties: {},
+    required: []
+  };
+  const requiredSet = new Set();
+
+  for (const schema of schemas) {
+    Object.assign(merged.properties, schema.properties ?? {});
+
+    for (const field of schema.required ?? []) {
+      requiredSet.add(field);
+    }
+
+    if (schema.additionalProperties === true) {
+      merged.additionalProperties = true;
+    } else if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+      merged.additionalProperties = schema.additionalProperties;
+    }
+  }
+
+  merged.required = [...requiredSet];
+  return merged;
+}
+
+function renderUnionZodExpression(spec, variants) {
+  const expressions = [...new Set(variants.map((entry) => renderRequiredZodExpression(spec, entry)))];
+
+  if (expressions.length === 0) {
+    return "z.unknown()";
+  }
+
+  if (expressions.length === 1) {
+    return expressions[0];
+  }
+
+  return `z.union([${expressions.join(", ")}])`;
+}
+
+function renderIntersectionZodExpression(spec, variants) {
+  const expressions = variants.map((entry) => renderRequiredZodExpression(spec, entry));
+
+  if (expressions.length === 0) {
+    return "z.unknown()";
+  }
+
+  return expressions
+    .slice(1)
+    .reduce((current, expression) => `z.intersection(${current}, ${expression})`, expressions[0]);
+}
 function renderEnumZodExpression(values) {
   if (values.every((value) => typeof value === "string")) {
     return `z.enum([${values.map((value) => JSON.stringify(value)).join(", ")}])`;
@@ -1064,4 +1140,6 @@ function buildPathToolName(method, routePath) {
 function escapeText(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
+
+
 

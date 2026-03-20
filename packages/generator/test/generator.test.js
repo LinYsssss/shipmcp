@@ -165,6 +165,9 @@ test("generateProject respects deprecated and response-status filters", async ()
   assert.match(toolsFile, /body: z\.object\({[\s\S]*name: z\.string\(\)\.optional\(\)/);
   assert.match(toolsFile, /metadata: z\.object\({[\s\S]*vaccinated: z\.boolean\(\)/);
   assert.match(toolsFile, /traits: z\.array\(z\.string\(\)\)\.optional\(\)/);
+  assert.match(toolsFile, /profile: z\.object\({[\s\S]*age: z\.number\(\)\.int\(\)\.optional\(\)[\s\S]*name: z\.string\(\)/);
+  assert.ok(toolsFile.includes("identifier: z.union([z.string(), z.number().int()]).optional()"));
+  assert.ok(toolsFile.includes("status: z.union([z.string(), z.number().int()]).optional()"));
 });
 
 test("generateProject supports YAML specs with local refs and json-like request bodies", async () => {

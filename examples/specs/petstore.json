@@ -81,6 +81,47 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "profile": {
+                    "allOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "age": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "identifier": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
                   }
                 }
               }

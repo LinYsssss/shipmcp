@@ -206,8 +206,8 @@ docs/
 ## Near-term focus
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
-2. Expand schema flattening to nullable, enum, and composed-schema edge cases.
-3. Expand response-aware selection beyond status-code filters.
+2. Expand schema normalization for discriminated unions, nullable composed inputs, and additionalProperties edge cases.
+3. Expand response-aware selection beyond status-code and deprecated filters.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.
 
@@ -227,3 +227,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
