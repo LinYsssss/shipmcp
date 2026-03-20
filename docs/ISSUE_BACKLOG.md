@@ -21,7 +21,6 @@
 - Better schema flattening
 - Name collision strategy
 - Response and error normalization
-- Expanded generator snapshot coverage (YAML scenarios)
 - Better generated docs
 
 ## P2

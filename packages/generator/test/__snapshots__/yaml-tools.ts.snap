@@ -1,0 +1,120 @@
+import { z } from "zod";
+
+export type GeneratedTool = {
+  name: string;
+  method: string;
+  path: string;
+  description: string;
+  inputSchema: Record<string, z.ZodTypeAny>;
+  buildRequest: (input: Record<string, unknown>) => {
+    path: string;
+    query: URLSearchParams;
+    headers: Record<string, string>;
+    body?: unknown;
+  };
+};
+
+export const generatedTools: GeneratedTool[] = [
+  {
+    name: "list_pets",
+    method: "GET",
+    path: "/pets",
+    description: "List pets",
+    inputSchema: {
+      limit: z.number().int().optional()
+    },
+    buildRequest(input) {
+      const query = new URLSearchParams();
+      const headers: Record<string, string> = {};
+      let body: unknown = undefined;
+      const resolvedPath = `/pets`;
+      if (input.limit !== undefined) query.set("limit", String(input.limit));
+
+
+      return {
+        path: resolvedPath,
+        query,
+        headers,
+        body
+      };
+    }
+  },
+
+  {
+    name: "create_pet",
+    method: "POST",
+    path: "/pets",
+    description: "Create a new pet",
+    inputSchema: {
+      body: z.object({ name: z.string().optional(), species: z.string().optional(), metadata: z.object({ vaccinated: z.boolean(), nickname: z.string().optional() }).optional(), traits: z.array(z.string()).optional(), profile: z.object({ age: z.number().int().optional(), name: z.string() }).optional(), identifier: z.union([z.string(), z.number().int()]).optional(), status: z.union([z.string(), z.number().int()]).optional() })
+    },
+    buildRequest(input) {
+      const query = new URLSearchParams();
+      const headers: Record<string, string> = {};
+      let body: unknown = undefined;
+      const resolvedPath = `/pets`;
+
+
+      if (input.body !== undefined) {
+        headers["content-type"] = "application/json";
+        body = input.body;
+      }
+      return {
+        path: resolvedPath,
+        query,
+        headers,
+        body
+      };
+    }
+  },
+
+  {
+    name: "get_pet",
+    method: "GET",
+    path: "/pets/{petId}",
+    description: "Get a pet by ID",
+    inputSchema: {
+      petId: z.string()
+    },
+    buildRequest(input) {
+      const query = new URLSearchParams();
+      const headers: Record<string, string> = {};
+      let body: unknown = undefined;
+      const resolvedPath = `/pets/${encodeURIComponent(String(input.petId))}`;
+
+
+
+      return {
+        path: resolvedPath,
+        query,
+        headers,
+        body
+      };
+    }
+  },
+
+  {
+    name: "get_admin_stats",
+    method: "GET",
+    path: "/admin/stats",
+    description: "Get admin stats",
+    inputSchema: {
+
+    },
+    buildRequest(input) {
+      const query = new URLSearchParams();
+      const headers: Record<string, string> = {};
+      let body: unknown = undefined;
+      const resolvedPath = `/admin/stats`;
+
+
+
+      return {
+        path: resolvedPath,
+        query,
+        headers,
+        body
+      };
+    }
+  }
+];

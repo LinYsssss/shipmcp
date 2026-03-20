@@ -158,6 +158,22 @@ test("generateProject matches http key-file snapshots", async () => {
   await assertSnapshotMatches(targetDir, ".env.example", "http-env.example.snap");
 });
 
+test("generateProject matches yaml stdio key-file snapshots", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-snapshot-yaml-"));
+
+  await generateProject({
+    specRef: yamlFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  await assertSnapshotMatches(targetDir, "package.json", "yaml-package.json.snap");
+  await assertSnapshotMatches(targetDir, "src/server.ts", "yaml-server.ts.snap");
+  await assertSnapshotMatches(targetDir, "src/tools.ts", "yaml-tools.ts.snap");
+  await assertSnapshotMatches(targetDir, "README.md", "yaml-readme.md.snap");
+  await assertSnapshotMatches(targetDir, ".env.example", "yaml-env.example.snap");
+});
+
 test("generateProject matches filtered tools and readme snapshots", async () => {
   const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-snapshot-filtered-"));
 

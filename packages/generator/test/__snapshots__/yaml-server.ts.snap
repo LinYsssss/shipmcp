@@ -1,0 +1,28 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+import { callApi } from "./client.js";
+import { generatedTools } from "./tools.js";
+
+const server = new McpServer({
+  name: "acme-petstore-yaml-api",
+  version: "0.1.0"
+});
+
+for (const tool of generatedTools) {
+  server.tool(tool.name, tool.inputSchema, async (input) => {
+    const response = await callApi(tool, input);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(response, null, 2)
+        }
+      ]
+    };
+  });
+}
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
