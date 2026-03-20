@@ -162,6 +162,9 @@ test("generateProject respects deprecated and response-status filters", async ()
   assert.doesNotMatch(toolsFile, /list_pets/);
   assert.match(generatedReadme, /deprecated-only=true/);
   assert.match(generatedReadme, /include-response-statuses=201/);
+  assert.match(toolsFile, /body: z\.object\({[\s\S]*name: z\.string\(\)\.optional\(\)/);
+  assert.match(toolsFile, /metadata: z\.object\({[\s\S]*vaccinated: z\.boolean\(\)/);
+  assert.match(toolsFile, /traits: z\.array\(z\.string\(\)\)\.optional\(\)/);
 });
 
 test("generateProject supports YAML specs with local refs and json-like request bodies", async () => {
@@ -180,7 +183,6 @@ test("generateProject supports YAML specs with local refs and json-like request 
   assert.equal(result.authPreset, "bearer");
   assert.equal(result.operationCount, 4);
   assert.match(toolsFile, /petId: z\.string\(\)/);
-  assert.match(toolsFile, /body: z\.record\(z\.string\(\), z\.unknown\(\)\)/);
   assert.match(toolsFile, /create_pet/);
   assert.match(envFile, /BEARER_TOKEN=replace-me/);
 });

@@ -467,15 +467,15 @@ function mergeParameters(spec, pathParameters, operationParameters) {
 }
 
 function toInputParameter(spec, parameter) {
-  const type = readSchemaType(spec, parameter.schema);
+  const required = Boolean(parameter.required);
 
   return {
     originalName: parameter.name,
     source: parameter.in ?? "query",
     name: toSafeIdentifier(parameter.name),
-    required: Boolean(parameter.required),
+    required,
     description: parameter.description ?? `${parameter.in ?? "query"} parameter ${parameter.name}`,
-    schemaType: type
+    zodExpression: renderZodExpression(spec, parameter.schema, { required })
   };
 }
 
@@ -495,7 +495,9 @@ function toRequestBodyInput(spec, requestBodyValue) {
     name: "body",
     required: Boolean(requestBody.required),
     description: "JSON request body",
-    schemaType: readSchemaType(spec, jsonContent.schema)
+    zodExpression: renderZodExpression(spec, jsonContent.schema, {
+      required: Boolean(requestBody.required)
+    })
   };
 }
 
@@ -517,7 +519,84 @@ function findJsonContent(content) {
   return null;
 }
 
-function readSchemaType(spec, schemaValue) {
+function renderZodExpression(spec, schemaValue, options = {}) {
+  const required = options.required ?? true;
+  const expression = renderRequiredZodExpression(spec, schemaValue);
+  return required ? expression : `${expression}.optional()`;
+}
+
+function renderRequiredZodExpression(spec, schemaValue) {
+  const schema = resolveMaybeRef(spec, schemaValue);
+
+  if (!schema || typeof schema !== "object") {
+    return "z.string()";
+  }
+
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+    return renderEnumZodExpression(schema.enum);
+  }
+
+  const normalizedType = inferSchemaType(spec, schema);
+  let expression;
+
+  if (normalizedType === "integer") {
+    expression = "z.number().int()";
+  } else if (normalizedType === "number") {
+    expression = "z.number()";
+  } else if (normalizedType === "boolean") {
+    expression = "z.boolean()";
+  } else if (normalizedType === "array") {
+    expression = `z.array(${renderRequiredZodExpression(spec, schema.items)})`;
+  } else if (normalizedType === "object") {
+    expression = renderObjectZodExpression(spec, schema);
+  } else {
+    expression = "z.string()";
+  }
+
+  if (schema.nullable) {
+    expression += ".nullable()";
+  }
+
+  return expression;
+}
+
+function renderObjectZodExpression(spec, schema) {
+  const properties = schema.properties ?? {};
+  const requiredSet = new Set(Array.isArray(schema.required) ? schema.required : []);
+  const entries = Object.entries(properties).map(([propertyName, propertySchema]) => {
+    const propertyExpression = renderZodExpression(spec, propertySchema, {
+      required: requiredSet.has(propertyName)
+    });
+
+    return `${renderObjectKey(propertyName)}: ${propertyExpression}`;
+  });
+
+  let expression = `z.object({${entries.length > 0 ? ` ${entries.join(", ")} ` : ""}})`;
+
+  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    expression += `.catchall(${renderRequiredZodExpression(spec, schema.additionalProperties)})`;
+  } else if (schema.additionalProperties === true) {
+    expression += ".catchall(z.unknown())";
+  }
+
+  return expression;
+}
+
+function renderEnumZodExpression(values) {
+  if (values.every((value) => typeof value === "string")) {
+    return `z.enum([${values.map((value) => JSON.stringify(value)).join(", ")}])`;
+  }
+
+  if (values.length === 1) {
+    return `z.literal(${JSON.stringify(values[0])})`;
+  }
+
+  return `z.union([${values
+    .map((value) => `z.literal(${JSON.stringify(value)})`)
+    .join(", ")}])`;
+}
+
+function inferSchemaType(spec, schemaValue) {
   const schema = resolveMaybeRef(spec, schemaValue);
 
   if (!schema || typeof schema !== "object") {
@@ -530,7 +609,7 @@ function readSchemaType(spec, schemaValue) {
 
   if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf) || Array.isArray(schema.allOf)) {
     const variants = schema.oneOf ?? schema.anyOf ?? schema.allOf ?? [];
-    const inferredTypes = [...new Set(variants.map((entry) => readSchemaType(spec, entry)))];
+    const inferredTypes = [...new Set(variants.map((entry) => inferSchemaType(spec, entry)))];
 
     if (inferredTypes.length === 1) {
       return inferredTypes[0];
@@ -554,6 +633,10 @@ function readSchemaType(spec, schemaValue) {
   }
 
   return "string";
+}
+
+function renderObjectKey(value) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value) ? value : JSON.stringify(value);
 }
 
 function resolveServerUrl(spec) {
@@ -842,7 +925,7 @@ function renderToolEntry(operation) {
       : inputs
           .map(
             (input) =>
-              `      ${input.name}: ${toZodExpression(input.schemaType, input.required)}`
+              `      ${input.name}: ${input.zodExpression}`
           )
           .join(",\n");
 
@@ -978,21 +1061,7 @@ function buildPathToolName(method, routePath) {
   return [method.toLowerCase(), ...pieces].join("_");
 }
 
-function toZodExpression(schemaType, required) {
-  const base =
-    schemaType === "integer" || schemaType === "number"
-      ? "z.number()"
-      : schemaType === "boolean"
-        ? "z.boolean()"
-        : schemaType === "array"
-          ? "z.array(z.unknown())"
-          : schemaType === "object"
-            ? "z.record(z.string(), z.unknown())"
-            : "z.string()";
-
-  return required ? base : `${base}.optional()`;
-}
-
 function escapeText(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
+

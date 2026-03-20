@@ -13,7 +13,7 @@
 ## v0.2
 
 - richer response-aware selection beyond status-code filters
-- better schema flattening
+- deeper schema flattening for nullable, enum, and composed schemas
 - better oneOf/anyOf/allOf handling
 - HTTP transport template
 - generator snapshot coverage

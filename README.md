@@ -64,6 +64,7 @@ ShipMCP currently focuses on the minimum path that matters:
 - generated GitHub Actions CI
 - generated project README
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
+- structured object and array Zod input generation for parameters and JSON bodies
 - tag, HTTP method, path, operationId, response-status, and deprecated-operation filtering
 
 Explicitly not in v0.1:
@@ -205,7 +206,7 @@ docs/
 ## Near-term focus
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
-2. Improve schema flattening and composed-schema naming quality.
+2. Expand schema flattening to nullable, enum, and composed-schema edge cases.
 3. Expand response-aware selection beyond status-code filters.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.

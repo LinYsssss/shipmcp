@@ -63,6 +63,24 @@
                   },
                   "type": {
                     "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "required": ["vaccinated"],
+                    "properties": {
+                      "vaccinated": {
+                        "type": "boolean"
+                      },
+                      "nickname": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "traits": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 }
               }
