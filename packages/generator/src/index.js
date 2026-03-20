@@ -548,6 +548,7 @@ function renderRequiredZodExpression(spec, schemaValue) {
     return renderEnumZodExpression(schema.enum);
   }
 
+  const normalizedSchema = normalizeSchemaShape(schema);
   let expression;
 
   if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
@@ -557,7 +558,7 @@ function renderRequiredZodExpression(spec, schemaValue) {
   } else if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
     expression = renderUnionZodExpression(spec, schema.anyOf);
   } else {
-    const normalizedType = inferSchemaType(spec, schema);
+    const normalizedType = inferSchemaType(spec, normalizedSchema);
 
     if (normalizedType === "integer") {
       expression = "z.number().int()";
@@ -566,19 +567,42 @@ function renderRequiredZodExpression(spec, schemaValue) {
     } else if (normalizedType === "boolean") {
       expression = "z.boolean()";
     } else if (normalizedType === "array") {
-      expression = `z.array(${renderRequiredZodExpression(spec, schema.items)})`;
+      expression = `z.array(${renderRequiredZodExpression(spec, normalizedSchema.items)})`;
     } else if (normalizedType === "object") {
-      expression = renderObjectZodExpression(spec, schema);
+      expression = renderObjectZodExpression(spec, normalizedSchema);
     } else {
       expression = "z.string()";
     }
   }
 
-  if (schema.nullable) {
+  if (normalizedSchema.nullable) {
     expression += ".nullable()";
   }
 
   return expression;
+}
+
+function normalizeSchemaShape(schema) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
+    return schema;
+  }
+
+  if (!Array.isArray(schema.type)) {
+    return schema;
+  }
+
+  const nonNullTypes = schema.type.filter((entry) => entry !== "null");
+  const containsNull = nonNullTypes.length !== schema.type.length;
+
+  if (nonNullTypes.length !== 1) {
+    return containsNull ? { ...schema, nullable: true } : schema;
+  }
+
+  return {
+    ...schema,
+    type: nonNullTypes[0],
+    nullable: containsNull || Boolean(schema.nullable)
+  };
 }
 
 function renderObjectZodExpression(spec, schema) {
@@ -591,6 +615,10 @@ function renderObjectZodExpression(spec, schema) {
 
     return `${renderObjectKey(propertyName)}: ${propertyExpression}`;
   });
+
+  if (entries.length === 0 && schema.additionalProperties && typeof schema.additionalProperties === "object") {
+    return `z.record(${renderRequiredZodExpression(spec, schema.additionalProperties)})`;
+  }
 
   let expression = `z.object({${entries.length > 0 ? ` ${entries.join(", ")} ` : ""}})`;
 
@@ -691,12 +719,14 @@ function inferSchemaType(spec, schemaValue) {
     return "string";
   }
 
-  if (schema.type) {
-    return schema.type;
+  const normalizedSchema = normalizeSchemaShape(schema);
+
+  if (typeof normalizedSchema.type === "string") {
+    return normalizedSchema.type;
   }
 
-  if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf) || Array.isArray(schema.allOf)) {
-    const variants = schema.oneOf ?? schema.anyOf ?? schema.allOf ?? [];
+  if (Array.isArray(normalizedSchema.oneOf) || Array.isArray(normalizedSchema.anyOf) || Array.isArray(normalizedSchema.allOf)) {
+    const variants = normalizedSchema.oneOf ?? normalizedSchema.anyOf ?? normalizedSchema.allOf ?? [];
     const inferredTypes = [...new Set(variants.map((entry) => inferSchemaType(spec, entry)))];
 
     if (inferredTypes.length === 1) {
@@ -712,11 +742,11 @@ function inferSchemaType(spec, schemaValue) {
     }
   }
 
-  if (schema.properties || schema.additionalProperties) {
+  if (normalizedSchema.properties || normalizedSchema.additionalProperties) {
     return "object";
   }
 
-  if (schema.items) {
+  if (normalizedSchema.items) {
     return "array";
   }
 
@@ -1259,9 +1289,4 @@ function buildPathToolName(method, routePath) {
 function escapeText(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
-
-
-
-
-
 

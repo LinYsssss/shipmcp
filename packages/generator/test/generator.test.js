@@ -8,6 +8,8 @@ import { generateProject, loadSpec, summarizeSpec, validateSpec } from "../src/i
 
 const jsonFixturePath = path.resolve("examples/specs/petstore.json");
 const yamlFixturePath = path.resolve("examples/specs/petstore.yaml");
+const compatibilityJsonFixturePath = path.resolve("examples/specs/compatibility-nullable.json");
+const compatibilityYamlFixturePath = path.resolve("examples/specs/compatibility-nullable.yaml");
 const snapshotDir = path.resolve("packages/generator/test/__snapshots__");
 
 function normalizeText(value) {
@@ -291,5 +293,40 @@ test("generateProject supports YAML specs with local refs and json-like request 
   assert.match(toolsFile, /petId: z\.string\(\)/);
   assert.match(toolsFile, /create_pet/);
   assert.match(envFile, /BEARER_TOKEN=replace-me/);
+});
+test("generateProject supports OpenAPI 3.1 nullable type arrays and additionalProperties in JSON fixtures", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-compat-json-"));
+
+  const result = await generateProject({
+    specRef: compatibilityJsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+
+  assert.equal(result.projectName, "compatibility-nullable-json-api");
+  assert.equal(result.operationCount, 1);
+  assert.match(toolsFile, /displayName: z\.string\(\)\.nullable\(\)\.optional\(\)/);
+  assert.match(toolsFile, /labels: z\.record\(z\.string\(\)\)\.optional\(\)/);
+  assert.match(toolsFile, /metrics: z\.object\(\{[\s\S]*stable: z\.boolean\(\)\.optional\(\)[\s\S]*\}\)\.catchall\(z\.number\(\)\.int\(\)\)\.optional\(\)/);
+});
+
+test("generateProject supports OpenAPI 3.1 nullable type arrays and additionalProperties in YAML fixtures", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-compat-yaml-"));
+
+  const result = await generateProject({
+    specRef: compatibilityYamlFixturePath,
+    outDir: targetDir,
+    authPreset: "auto"
+  });
+
+  const toolsFile = await fs.readFile(path.join(targetDir, "src", "tools.ts"), "utf8");
+
+  assert.equal(result.projectName, "compatibility-nullable-yaml-api");
+  assert.equal(result.operationCount, 1);
+  assert.match(toolsFile, /displayName: z\.string\(\)\.nullable\(\)\.optional\(\)/);
+  assert.match(toolsFile, /labels: z\.record\(z\.string\(\)\)\.optional\(\)/);
+  assert.match(toolsFile, /metrics: z\.object\(\{[\s\S]*stable: z\.boolean\(\)\.optional\(\)[\s\S]*\}\)\.catchall\(z\.number\(\)\.int\(\)\)\.optional\(\)/);
 });
 

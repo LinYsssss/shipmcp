@@ -66,6 +66,8 @@ ShipMCP currently focuses on the minimum path that matters:
 - generated project README
 - local `#/components/...` $ref resolution for parameters, request bodies, and schemas
 - structured object and array Zod input generation for parameters and JSON bodies
+- OpenAPI 3.1 nullable type-array handling such as `type: ["string", "null"]`
+- improved `additionalProperties` generation for record-like maps and mixed objects
 - tag, HTTP method, path, operationId, response-status, and deprecated-operation filtering
 
 Explicitly not in v0.1:
@@ -213,7 +215,7 @@ docs/
 ## Near-term focus
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
-2. Expand schema normalization for discriminated unions, nullable composed inputs, and additionalProperties edge cases.
+2. Expand schema normalization for discriminated unions, broader multi-type arrays, and remaining additionalProperties edge cases.
 3. Expand response-aware selection beyond status-code and deprecated filters.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.
@@ -234,5 +236,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
-
 
