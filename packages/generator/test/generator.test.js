@@ -158,6 +158,23 @@ test("generateProject matches http key-file snapshots", async () => {
   await assertSnapshotMatches(targetDir, ".env.example", "http-env.example.snap");
 });
 
+test("generateProject matches filtered tools and readme snapshots", async () => {
+  const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-snapshot-filtered-"));
+
+  await generateProject({
+    specRef: jsonFixturePath,
+    outDir: targetDir,
+    authPreset: "auto",
+    filterOptions: {
+      includePaths: ["/pets*"],
+      excludeOperationIds: ["create*"]
+    }
+  });
+
+  await assertSnapshotMatches(targetDir, "src/tools.ts", "filtered-tools.ts.snap");
+  await assertSnapshotMatches(targetDir, "README.md", "filtered-readme.md.snap");
+});
+
 test("generateProject respects includeTags and excludeMethods filters", async () => {
   const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), "shipmcp-filtered-"));
 
