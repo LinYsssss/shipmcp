@@ -176,6 +176,7 @@ Backup names if you ever rebrand:
 - [Launch Copy](docs/LAUNCH_COPY.md)
 - [Bootstrap Release Notes](docs/RELEASE_v0.1.0-bootstrap.md)
 - [GitHub Setup](docs/GITHUB_SETUP.md)
+- [Automation Runbook](docs/AUTOMATION_RUNBOOK.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 
