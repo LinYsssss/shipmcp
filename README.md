@@ -1,4 +1,4 @@
-# ShipMCP
+﻿# ShipMCP
 
 [![CI](https://github.com/LinYsssss/shipmcp/actions/workflows/ci.yml/badge.svg)](https://github.com/LinYsssss/shipmcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -64,6 +64,66 @@ Run local checks:
 npm test
 node packages/cli/src/index.js doctor
 ```
+
+## What ShipMCP actually generates
+
+Give ShipMCP one OpenAPI file. Get back a runnable repo you can review, edit, and ship.
+
+Input:
+
+```text
+examples/specs/petstore.yaml
+```
+
+Command:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.yaml --out sandbox/petstore-preview --yes
+```
+
+Output:
+
+```text
+petstore-preview/
+  src/
+    server.ts
+    client.ts
+    tools.ts
+  tests/
+    smoke.test.ts
+    api.test.ts
+  openapi/
+    source.yaml
+  .env.example
+  Dockerfile
+  README.md
+  .github/workflows/ci.yml
+  package.json
+  tsconfig.json
+```
+
+Generated `src/server.ts` excerpt:
+
+```ts
+const server = new McpServer({
+  name: "acme-petstore-api",
+  version: "0.1.0"
+});
+
+for (const tool of generatedTools) {
+  server.tool(tool.name, tool.inputSchema, async (input) => {
+    const response = await callApi(tool, input);
+    return {
+      content: [{ type: "text", text: JSON.stringify(response, null, 2) }]
+    };
+  });
+}
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+Editable. Reviewable. Shippable.
 
 ## Why ShipMCP is different
 
@@ -221,4 +281,5 @@ docs/
 ## License
 
 MIT
+
 
