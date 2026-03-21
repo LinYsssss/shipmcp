@@ -27,6 +27,16 @@ If ShipMCP saves you a day of MCP wiring, star the repo.
 
 ShipMCP is for shipping MCP repos from APIs you already own.
 
+## Try ShipMCP in 30 seconds
+
+Validate a real spec first:
+
+```bash
+node packages/cli/src/index.js validate examples/specs/petstore.yaml
+```
+
+If that looks good, generate a runnable repo next.
+
 ## Why people star this
 
 - Most teams already have APIs. They do not want to hand-wire MCP tools, request mapping, auth, Docker, CI, tests, and docs again.
@@ -317,6 +327,7 @@ docs/
 ## License
 
 MIT
+
 
 
 
