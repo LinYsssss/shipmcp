@@ -19,6 +19,28 @@ If ShipMCP saves you a day of MCP wiring, star the repo.
 - ShipMCP gives you code you own. It is not a hosted black box and it is not a demo-only generator.
 - Large specs stay usable because generation can be filtered by tags, methods, paths, operationIds, status codes, response content types, and deprecated operations.
 
+## Manual MCP wiring is expensive
+
+Most teams do not need another MCP demo. They need to stop rebuilding the same glue code around APIs they already own.
+
+### Without ShipMCP
+
+- wire MCP tools by hand
+- map params and request bodies to HTTP calls
+- add auth handling
+- scaffold tests
+- add Docker and CI
+- write the first README and setup notes
+
+### With ShipMCP
+
+- run one generate command
+- review the generated TypeScript repo
+- adjust names or auth as needed
+- commit and ship from a real project structure
+
+ShipMCP does not remove review. It removes repetitive setup work.
+
 ## What you get
 
 Given one OpenAPI file, ShipMCP creates a repo like this:
@@ -281,5 +303,6 @@ docs/
 ## License
 
 MIT
+
 
 
