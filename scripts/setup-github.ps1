@@ -7,24 +7,28 @@ $topics = @(
   "model-context-protocol",
   "openapi",
   "openapi-generator",
-  "api",
-  "api-first",
+  "codegen",
   "typescript",
   "cli",
   "developer-tools",
-  "ai-tools",
+  "developer-experience",
+  "api-first",
   "automation",
-  "codegen",
-  "llm-tools",
-  "anthropic",
-  "cursor",
-  "claude-code",
-  "codex"
+  "llm-tools"
 )
+
+$description = "Generate a runnable MCP repo from any OpenAPI spec."
+
+Write-Host "Checking GitHub CLI authentication ..."
+gh auth status *> $null
+
+if ($LASTEXITCODE -ne 0) {
+  throw "GitHub CLI authentication is invalid. Run 'gh auth login -h github.com' and retry."
+}
 
 $arguments = @(
   "repo", "edit", $Repository,
-  "--description", "Turn any OpenAPI spec into a production-ready MCP server.",
+  "--description", $description,
   "--enable-discussions"
 )
 
@@ -36,7 +40,7 @@ Write-Host "Applying GitHub metadata to $Repository ..."
 & gh @arguments
 
 if ($LASTEXITCODE -ne 0) {
-  throw "Failed to update repository settings. Make sure 'gh auth login' has completed."
+  throw "Failed to update repository settings after authentication succeeded."
 }
 
 Write-Host "Repository metadata updated."
