@@ -35,7 +35,7 @@ Validate a real spec first:
 node packages/cli/src/index.js validate examples/specs/petstore.yaml
 ```
 
-If that looks good, generate a runnable repo next.
+If that looks good, generate a runnable repo next with `node packages/cli/src/index.js generate examples/specs/petstore.yaml --out sandbox/petstore-preview --yes`.
 
 ## Why people star this
 
@@ -327,6 +327,7 @@ docs/
 ## License
 
 MIT
+
 
 
 
