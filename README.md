@@ -5,29 +5,21 @@
 [![Release](https://img.shields.io/github/v/release/LinYsssss/shipmcp?include_prereleases&label=release)](https://github.com/LinYsssss/shipmcp/releases/tag/v0.1.0-bootstrap)
 [![Stars](https://img.shields.io/github/stars/LinYsssss/shipmcp?style=social)](https://github.com/LinYsssss/shipmcp/stargazers)
 
-Turn any OpenAPI spec into a production-ready MCP server in under 90 seconds.
+Turn any OpenAPI spec into a runnable MCP repository you can actually ship.
 
-ShipMCP generates an **editable TypeScript MCP repository** from your OpenAPI spec, with auth presets, tests, Docker, CI, and a usable README included.
+ShipMCP takes an existing REST API and generates an **editable TypeScript MCP repo** with auth presets, tests, Docker, CI, and a usable README already in place.
 
-It is not trying to be another "look, it generated some code" demo.
-It is trying to be the shortest path from **existing REST API** to **something you can actually ship into the MCP ecosystem**.
+**OpenAPI in. Runnable MCP repo out.**
 
-## The problem
+If ShipMCP saves you a day of MCP wiring, star the repo.
 
-Most teams already have APIs.
-What they do not have is time to manually wire:
+## Why people star this
 
-- MCP tool definitions
-- request mapping
-- auth handling
-- Docker
-- CI
-- smoke tests
-- onboarding docs
+- Most teams already have APIs. They do not want to hand-wire MCP tools, request mapping, auth, Docker, CI, tests, and docs again.
+- ShipMCP gives you code you own. It is not a hosted black box and it is not a demo-only generator.
+- Large specs stay usable because generation can be filtered by tags, methods, paths, operationIds, status codes, response content types, and deprecated operations.
 
-That repeated setup work is the gap ShipMCP is designed to remove.
-
-## What ShipMCP generates
+## What you get
 
 Given one OpenAPI file, ShipMCP creates a repo like this:
 
@@ -50,97 +42,66 @@ my-api-mcp/
   tsconfig.json
 ```
 
-## Current v0.1 bootstrap scope
-
-ShipMCP currently focuses on the minimum path that matters:
-
-- OpenAPI `3.x`
-- local or remote spec input
-- JSON and YAML spec input
-- TypeScript MCP server output for `stdio` and `http` transport
-- `API Key` and `Bearer Token` auth presets
-- generated tests
-- generator snapshot coverage for stdio and HTTP key files
-- generated Dockerfile
-- generated GitHub Actions CI
-- generated project README
-- local `#/components/...` $ref resolution for parameters, request bodies, and schemas
-- structured object and array Zod input generation for parameters and JSON bodies
-- OpenAPI 3.1 nullable and scalar multi-type array handling such as `type: ["string", "null"]` and `type: ["string", "integer"]`
-- improved `additionalProperties` generation for record-like maps and mixed objects
-- tag, HTTP method, path, operationId, response-status, response content-type, and deprecated-operation filtering
-
-Explicitly not in v0.1:
-
-- OAuth browser flows
-- GraphQL
-- GUI builder
-- hosted generation
-- multi-language output
+That output is meant to be reviewed, edited, committed, and shipped.
 
 ## Quick start
 
-Validate the bundled spec:
+Validate a spec:
 
 ```bash
 node packages/cli/src/index.js validate examples/specs/petstore.yaml
 ```
 
-Generate a sample MCP repo from JSON:
+Generate a runnable MCP repo:
 
 ```bash
 node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-mcp --yes
 ```
 
-Generate an HTTP MCP repo from the same spec:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-http --transport http --yes
-```
-
-Generate the same sample from YAML with local refs:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/petstore.yaml --out sandbox/petstore-yaml --yes
-```
-
-Generate only the `pets` tools and skip `POST` endpoints:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-readonly --include-tags pets --exclude-methods post --yes
-```
-
-Generate only `/pets*` paths while excluding matching operationIds with wildcards:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-focused --include-paths /pets* --exclude-operation-ids create* --yes
-```
-
-Generate only deprecated operations that return `201`:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-deprecated --deprecated-only --include-response-statuses 201 --yes
-```
-
-Generate only operations with JSON-style responses:
-
-```bash
-node packages/cli/src/index.js generate examples/specs/response-aware-filter.json --out sandbox/response-aware-json --include-response-content-types application/json,application/*+json --yes
-```
-
-Run the local project checks:
+Run local checks:
 
 ```bash
 npm test
 node packages/cli/src/index.js doctor
 ```
 
-## Why filtering matters
+## Why ShipMCP is different
 
-Real OpenAPI specs get large fast.
-If ShipMCP emits every operation by default on a large internal API, the generated MCP surface becomes noisy and harder to review.
+- **Not a toy generator.** ShipMCP generates a repo that already includes tests, Docker, CI, env scaffolding, and a README.
+- **Not a hosted builder.** The output is local, editable, reviewable, and self-hostable.
+- **Not all-or-nothing on large specs.** You can narrow generation before the repo is created.
+- **Built for modern OpenAPI reality.** JSON and YAML are supported, local refs work, nullable type arrays are handled, scalar multi-type arrays are normalized, and record-like `additionalProperties` are generated cleanly.
 
-Filtering is the first practical control layer:
+## Supported today
+
+ShipMCP currently supports:
+
+- OpenAPI `3.x`
+- local or remote spec input
+- JSON and YAML input
+- TypeScript MCP server output for `stdio` and `http`
+- `API Key` and `Bearer Token` auth presets
+- generated tests, Docker, and GitHub Actions CI
+- local `#/components/...` `$ref` resolution for parameters, request bodies, and schemas
+- structured Zod input generation for objects and arrays
+- OpenAPI 3.1 nullable and scalar multi-type arrays such as `type: ["string", "null"]` and `type: ["string", "integer"]`
+- improved `additionalProperties` handling for record-like maps and mixed objects
+- generator snapshot coverage for key stdio and HTTP outputs
+- filtering by tag, method, path, operationId, response status, response content type, and deprecated state
+
+Explicitly not in v0.1:
+
+- OAuth browser flows
+- GraphQL
+- GUI builders
+- hosted generation
+- multi-language output
+
+## Filtering is a feature, not an afterthought
+
+Real OpenAPI specs get large fast. If ShipMCP emits every operation from a large internal API, the generated MCP surface gets noisy and harder to review.
+
+ShipMCP already supports practical control layers such as:
 
 - `--include-tags pets,admin`
 - `--exclude-tags internal`
@@ -157,22 +118,46 @@ Filtering is the first practical control layer:
 - `--deprecated-only`
 - `--exclude-deprecated`
 
-Path, operationId, and response-status filters support `*` wildcards.
+Path, operationId, response-status, and response-content-type filters support `*` wildcards.
 
-## Example output
+## More examples
 
-The bundled JSON and YAML samples currently generate these tools before filtering:
+Generate the sample from YAML with local refs:
 
-- `list_pets` -> `GET /pets`
-- `create_pet` -> `POST /pets`
-- `get_pet` -> `GET /pets/{petId}`
-- `get_admin_stats` -> `GET /admin/stats`
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.yaml --out sandbox/petstore-yaml --yes
+```
 
-See the generated sample in [sandbox/petstore-mcp](sandbox/petstore-mcp).
+Generate an HTTP MCP repo:
 
-## Why this project can attract contributors
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-http --transport http --yes
+```
 
-ShipMCP has a natural contribution surface:
+Generate only `/pets*` paths while excluding matching operationIds:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/petstore.json --out sandbox/petstore-focused --include-paths /pets* --exclude-operation-ids create* --yes
+```
+
+Generate only operations with JSON-style responses:
+
+```bash
+node packages/cli/src/index.js generate examples/specs/response-aware-filter.json --out sandbox/response-aware-json --include-response-content-types application/json,application/*+json --yes
+```
+
+## If your spec breaks, that is roadmap signal
+
+ShipMCP is a better open-source project when real specs hit it.
+
+Open an issue with:
+
+- the failing spec or a reduced repro
+- the current output
+- the expected output
+- auth requirements if relevant
+
+This repo has a natural contribution surface:
 
 - real-world spec compatibility fixes
 - auth presets
@@ -180,18 +165,6 @@ ShipMCP has a natural contribution surface:
 - generator templates
 - example APIs
 - docs and launch assets
-
-This is the kind of infrastructure project that can compound if the first 20 contributors each add one real API edge case.
-
-## Repository name
-
-Primary name: `shipmcp`
-
-Backup names if you ever rebrand:
-
-- `mcpforge`
-- `spec2mcp`
-- `mcpdock`
 
 ## Docs
 
@@ -223,26 +196,11 @@ docs/
 ## Near-term focus
 
 1. Improve real-world OpenAPI compatibility beyond local refs.
-2. Expand schema normalization for discriminated unions, broader multi-type arrays, and remaining additionalProperties edge cases.
+2. Expand schema normalization for discriminated unions, object and array multi-type arrays, and remaining additionalProperties edge cases.
 3. Expand response-aware selection beyond status-code and deprecated filters.
 4. Add more showcase examples for launch.
 5. Tighten generated runtime error handling.
 
-## Contributing
-
-If ShipMCP fails on your spec, that is not noise. That is roadmap signal.
-
-Open an issue with:
-
-- the failing spec or a reduced repro
-- current output
-- expected output
-- auth requirements if relevant
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
 ## License
 
 MIT
-
-
