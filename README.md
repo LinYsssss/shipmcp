@@ -72,6 +72,23 @@ node packages/cli/src/index.js doctor
 - **Not all-or-nothing on large specs.** You can narrow generation before the repo is created.
 - **Built for modern OpenAPI reality.** JSON and YAML are supported, local refs work, nullable type arrays are handled, scalar multi-type arrays are normalized, and record-like `additionalProperties` are generated cleanly.
 
+## Built for real OpenAPI specs
+
+ShipMCP already handles more than a toy single-file petstore flow.
+
+- **JSON and YAML both work today.** You can generate from either format without changing the workflow.
+- **Local refs are supported.** Parameters, request bodies, and schemas can resolve through `#/components/...`.
+- **Modern OpenAPI 3.1 edge cases are already covered.** Nullable type arrays and scalar multi-type arrays are normalized into usable Zod output.
+- **Large specs can be narrowed before generation.** Response-aware, path, tag, method, and operation filters keep the generated MCP surface reviewable.
+- **Output is not locked to one transport.** ShipMCP can generate both `stdio` and `http` MCP repos today.
+
+You can inspect concrete examples in this repo right now:
+
+- [`examples/specs/petstore.yaml`](examples/specs/petstore.yaml) -> baseline YAML support plus local `$ref` resolution.
+- [`examples/specs/compatibility-nullable.json`](examples/specs/compatibility-nullable.json) -> nullable type arrays and cleaner `additionalProperties` handling.
+- [`examples/specs/response-aware-filter.json`](examples/specs/response-aware-filter.json) -> response status and response content-type filtering.
+- [`examples/specs/multi-type-array.json`](examples/specs/multi-type-array.json) -> scalar multi-type array normalization such as `type: ["string", "integer"]`.
+
 ## Supported today
 
 ShipMCP currently supports:
@@ -204,3 +221,4 @@ docs/
 ## License
 
 MIT
+
