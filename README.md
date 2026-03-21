@@ -13,6 +13,20 @@ ShipMCP takes an existing REST API and generates an **editable TypeScript MCP re
 
 If ShipMCP saves you a day of MCP wiring, star the repo.
 
+## Best for
+
+- teams that already have an OpenAPI spec
+- developers who want editable, self-hostable MCP code
+- APIs that need auth, tests, Docker, and CI from day one
+
+## Not for
+
+- teams without an OpenAPI spec yet
+- people looking for a hosted no-code builder
+- projects that need OAuth browser flows or GraphQL out of the box today
+
+ShipMCP is for shipping MCP repos from APIs you already own.
+
 ## Why people star this
 
 - Most teams already have APIs. They do not want to hand-wire MCP tools, request mapping, auth, Docker, CI, tests, and docs again.
@@ -303,6 +317,7 @@ docs/
 ## License
 
 MIT
+
 
 
 
