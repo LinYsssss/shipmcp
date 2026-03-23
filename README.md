@@ -11,6 +11,10 @@ ShipMCP takes an existing REST API and generates an **editable TypeScript MCP re
 
 **OpenAPI in. Runnable MCP repo out.**
 
+From one OpenAPI file to a runnable MCP repo in seconds.
+
+<!-- GIF slot: docs/launch/demo-gif-script.md -->
+
 If ShipMCP saves you a day of MCP wiring, star the repo.
 
 ## Best for
@@ -327,6 +331,7 @@ docs/
 ## License
 
 MIT
+
 
 
 
