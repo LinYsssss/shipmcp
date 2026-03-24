@@ -1,5 +1,15 @@
 ﻿# Launch Copy
 
+## Launch package index
+
+- Show HN post: `docs/launch/show-hn-post.md`
+- Show HN first comment: `docs/launch/show-hn-first-comment.md`
+- Show HN reply bank: `docs/launch/show-hn-reply-bank.md`
+- Show HN checklist: `docs/launch/show-hn-checklist.md`
+- Demo GIF script: `docs/launch/demo-gif-script.md`
+- Demo GIF checklist: `docs/launch/demo-gif-checklist.md`
+- Social preview copy: `docs/launch/social-preview-copy.md`
+
 ## Show HN title
 
 Show HN: ShipMCP - turn an OpenAPI spec into a runnable MCP repo
@@ -12,29 +22,26 @@ They generate something, but not something I would actually hand to a team and s
 
 ShipMCP takes an OpenAPI spec and generates an editable TypeScript MCP repository with:
 
-- MCP server scaffold
 - generated tools
 - auth presets
-- smoke tests
-- Dockerfile
-- GitHub Actions CI
+- tests
+- Docker
+- GitHub Actions
 - generated README
-
-The goal is simple: if a team already has a REST API, they should not have to hand-roll the same MCP boilerplate every time.
 
 Current scope already covers:
 
 - OpenAPI 3.x
 - JSON and YAML
 - stdio and HTTP transports
-- tag, method, path, operationId, response-status, response-content-type, and deprecated filtering
+- tag, method, path, operationId, response-aware, and deprecated filtering
 - local refs
 - improved normalization for nullable, multi-type, and additionalProperties cases
 
 Repo:
 https://github.com/LinYsssss/shipmcp
 
-I would especially value feedback from anyone who has tried connecting an existing API to Claude, Cursor, Codex, or another MCP client.
+The most useful feedback right now is real OpenAPI specs that break the generator.
 
 ## X post
 
@@ -106,29 +113,3 @@ Generate an editable TypeScript MCP repo with auth, tests, Docker, CI, and docs 
 ## Demo GIF caption
 
 From one OpenAPI file to a runnable MCP repo in seconds.
-
-## First GitHub release title
-
-v0.1.0-bootstrap
-
-## First GitHub release notes
-
-ShipMCP bootstrap release.
-
-Included in this version:
-- local CLI scaffold
-- OpenAPI 3.x loading for JSON and YAML
-- validation and auth detection
-- TypeScript MCP repo generation
-- stdio and HTTP transport templates
-- filtering for large specs
-- generated Dockerfile, CI, tests, and README
-- bundled Petstore sample
-
-What is intentionally missing:
-- OAuth browser flows
-- GraphQL
-- hosted generation
-- multi-language output
-
-This release is for validating the project shape and collecting real API feedback.
