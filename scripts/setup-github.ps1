@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Repository = "LinYsssss/shipmcp"
 )
 
@@ -18,6 +18,9 @@ $topics = @(
 )
 
 $description = "Generate a runnable MCP repo from any OpenAPI spec."
+$aboutPitch = "Editable TypeScript MCP repos with auth, tests, Docker, CI, and filters."
+$socialPreviewHeadline = "ShipMCP"
+$socialPreviewSubtext = "Turn an OpenAPI spec into a runnable MCP repo you can review, edit, and ship."
 
 Write-Host "Checking GitHub CLI authentication ..."
 gh auth status *> $null
@@ -44,3 +47,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Repository metadata updated."
+Write-Host "Recommended About pitch: $aboutPitch"
+Write-Host "Recommended social preview headline: $socialPreviewHeadline"
+Write-Host "Recommended social preview subtext: $socialPreviewSubtext"

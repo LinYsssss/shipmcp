@@ -1,4 +1,4 @@
-# GitHub Metadata
+﻿# GitHub Metadata
 
 ## Repository name
 
@@ -29,7 +29,7 @@ llm-tools
 
 ## About section short pitch
 
-OpenAPI to editable MCP repo with auth, tests, Docker, CI, and filters.
+Editable TypeScript MCP repos with auth, tests, Docker, CI, and filters.
 
 ## Social preview headline
 
@@ -37,7 +37,7 @@ ShipMCP
 
 ## Social preview subtext
 
-Turn any OpenAPI spec into a runnable MCP repo with auth, tests, Docker, and CI.
+Turn an OpenAPI spec into a runnable MCP repo you can review, edit, and ship.
 
 ## Recommended pinned points for README hero
 
